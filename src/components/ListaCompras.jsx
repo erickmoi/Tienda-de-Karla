@@ -1,5 +1,6 @@
 import { dinero, fecha } from '../lib/format'
 import { Vacio } from './ui'
+import { SelectorCuenta } from './Cuentas'
 
 // Estado de pago de una compra según su reporte (si lo tiene)
 const ESTADO_COMPRA = {
@@ -76,7 +77,7 @@ export function ListaPagos({ pagos }) {
 }
 
 // Selector reutilizable de forma de pago (efectivo / transferencia + referencia)
-export function FormaDePago({ metodo, setMetodo, referencia, setReferencia }) {
+export function FormaDePago({ metodo, setMetodo, referencia, setReferencia, cuentaId, setCuentaId }) {
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
@@ -88,8 +89,11 @@ export function FormaDePago({ metodo, setMetodo, referencia, setReferencia }) {
         ))}
       </div>
       {metodo === 'transferencia' && (
-        <input className="input animar-entrada" placeholder="Referencia o últimos dígitos (opcional)" maxLength={100}
-          value={referencia} onChange={(e) => setReferencia(e.target.value)} />
+        <div className="animar-entrada space-y-2">
+          {setCuentaId && <SelectorCuenta cuentaId={cuentaId} setCuentaId={setCuentaId} />}
+          <input className="input" placeholder="Referencia o últimos dígitos (opcional)" maxLength={100}
+            value={referencia} onChange={(e) => setReferencia(e.target.value)} />
+        </div>
       )}
     </div>
   )

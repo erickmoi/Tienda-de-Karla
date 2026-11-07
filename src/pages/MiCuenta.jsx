@@ -8,6 +8,7 @@ import { activarPush, desactivarPush, estadoPush, necesitaInstalar } from '../li
 import { invocar } from '../lib/funciones'
 import { Cargando, Exito, Hoja, Interruptor } from '../components/ui'
 import GuiaInstalar from '../components/GuiaInstalar'
+import { ListaCuentas } from '../components/Cuentas'
 import { estaInstalada } from '../lib/instalar'
 import ListaCompras, {
   FormaDePago, ListaPagos, SELECT_COMPRAS, SELECT_PAGOS, SELECT_REPORTES,
@@ -22,6 +23,7 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
   const [ahora, setAhora] = useState(Date.now())
   const [verPerfil, setVerPerfil] = useState(false)
   const [verCredito, setVerCredito] = useState(false)
+  const [verCuentas, setVerCuentas] = useState(false)
 
   const cargar = useCallback(async () => {
     const [saldo, compras, pagos, reportes, ajustes] = await Promise.all([
@@ -102,6 +104,16 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
         )}
       </div>
 
+      <button onClick={() => setVerCuentas(true)}
+        className="tarjeta flex w-full items-center gap-3 p-3 text-left transition active:scale-[0.98]">
+        <span className="text-2xl">💳</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-slate-900">Cómo pagarle a {encargada}</span>
+          <span className="block text-xs text-slate-500">Cuentas de banco y QR para transferir</span>
+        </span>
+        <span className="text-slate-400">›</span>
+      </button>
+
       {rechazos.length > 0 && (
         <div className="animar-entrada rounded-2xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
           {rechazos.map((r) => (
@@ -163,6 +175,16 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
         <MiPerfil avisar={avisar} onCerrar={() => setVerPerfil(false)}
           onTutorial={() => { setVerPerfil(false); onTutorial?.() }} />
       )}
+      {verCuentas && (
+        <Hoja titulo={`💳 Cómo pagarle a ${encargada}`} onCerrar={() => setVerCuentas(false)}>
+          <ListaCuentas encargada={encargada} />
+          {apariencia.pagos_clientes && (
+            <button onClick={() => { setVerCuentas(false); setVerCredito(true) }} className="btn-primario mt-4 w-full">
+              Ya pagué: avisar a {encargada}
+            </button>
+          )}
+        </Hoja>
+      )}
       {verCredito && (
         <AgregarCredito saldo={datos.saldo} avisar={avisar} onCerrar={() => setVerCredito(false)}
           onListo={() => { setVerCredito(false); cargar() }} />
@@ -177,6 +199,7 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
   const [monto, setMonto] = useState(saldo > 0 ? saldo.toFixed(2) : '')
   const [metodo, setMetodo] = useState('efectivo')
   const [referencia, setReferencia] = useState('')
+  const [cuentaId, setCuentaId] = useState(null)
   const [enviando, setEnviando] = useState(false)
   const [exito, setExito] = useState(false)
 
@@ -189,6 +212,7 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
     setEnviando(true)
     const { error } = await supabase.rpc('reportar_pago', {
       p_monto: valor, p_metodo: metodo, p_referencia: referencia || null,
+      p_metodo_pago_id: metodo === 'transferencia' ? cuentaId : null,
     })
     setEnviando(false)
     if (error) return avisar('error', mensajeError(error))
@@ -225,7 +249,8 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
         </div>
         <div>
           <p className="etiqueta">¿Cómo pagaste?</p>
-          <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia} />
+          <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia}
+            cuentaId={cuentaId} setCuentaId={setCuentaId} />
         </div>
         <button disabled={enviando} className="btn-primario w-full">{enviando ? 'Enviando…' : auto ? 'Registrar pago' : `Avisar a ${encargada}`}</button>
       </form>

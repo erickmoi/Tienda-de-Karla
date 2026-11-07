@@ -5,6 +5,7 @@ import { useApariencia } from '../../lib/apariencia'
 import { aplicarColor, PALETAS } from '../../lib/tema'
 import { borrarFoto, subirFoto } from '../../lib/fotos'
 import { Cargando, Interruptor } from '../../components/ui'
+import MetodosPago from './MetodosPago'
 
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 const horaTxt = (h) => (h === 24 ? '12:00 a. m. (medianoche)' : `${h % 12 || 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`)
@@ -102,6 +103,8 @@ export default function Ajustes({ avisar }) {
   const personalizado = !PALETAS.some((p) => p.color.toLowerCase() === f.color_marca.toLowerCase())
 
   return (
+    <div className="space-y-4">
+    <MetodosPago avisar={avisar} />
     <form onSubmit={guardar} className="space-y-4">
       {/* ---------- Apariencia ---------- */}
       <section className="tarjeta space-y-4">
@@ -354,5 +357,6 @@ export default function Ajustes({ avisar }) {
         </button>
       </div>
     </form>
+    </div>
   )
 }

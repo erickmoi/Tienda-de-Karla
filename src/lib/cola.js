@@ -33,6 +33,7 @@ export async function enviarPendientes() {
   for (const p of lista) {
     const { error } = await supabase.rpc('registrar_compra', {
       p_items: p.items, p_pagado: p.pagado, p_metodo: p.metodo, p_referencia: p.referencia,
+      p_metodo_pago_id: p.cuentaId ?? null,
     })
     if (!error) enviados++
     else if (esErrorDeRed(error)) quedan.push(p)

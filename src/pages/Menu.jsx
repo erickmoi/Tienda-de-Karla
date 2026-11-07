@@ -43,6 +43,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const [pagado, setPagado] = useState(false)
   const [metodo, setMetodo] = useState('efectivo')
   const [referencia, setReferencia] = useState('')
+  const [cuentaId, setCuentaId] = useState(null)
   const [enCola, setEnCola] = useState(pendientes().length)
   const [enLinea, setEnLinea] = useState(navigator.onLine)
   const inputBusqueda = useRef(null)
@@ -183,6 +184,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
       pagado: conPago,
       metodo,
       referencia: conPago && metodo === 'transferencia' ? referencia || null : null,
+      cuentaId: conPago && metodo === 'transferencia' ? cuentaId : null,
     }
     const terminar = (texto, sub) => {
       vibrar([20, 40, 20])
@@ -201,6 +203,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
     setRegistrando(true)
     const { error } = await supabase.rpc('registrar_compra', {
       p_items: pedido.items, p_pagado: pedido.pagado, p_metodo: pedido.metodo, p_referencia: pedido.referencia,
+      p_metodo_pago_id: pedido.cuentaId,
     })
     setRegistrando(false)
     if (error) {
@@ -399,7 +402,8 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
               </div>
               {pagado && (
                 <div className="animar-entrada">
-                  <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia} />
+                  <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia}
+                    cuentaId={cuentaId} setCuentaId={setCuentaId} />
                 </div>
               )}
             </div>
