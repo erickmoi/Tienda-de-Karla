@@ -79,6 +79,7 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
       <div className="flex items-center gap-1">
         <button onClick={() => setActiva(null)} aria-label="Volver al panel"
           className="shrink-0 rounded-full bg-superficie px-3 py-1.5 text-sm font-semibold text-marca-texto ring-1 ring-slate-200">‹ Panel</button>
+        <div className="min-w-0 flex-1">
         <FilaDeslizable>
           {secciones.map((s) => (
             <button key={s.id} onClick={() => abrir(s.id)} aria-label={s.titulo}
@@ -89,6 +90,7 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
             </button>
           ))}
         </FilaDeslizable>
+        </div>
       </div>
       {actual.id !== 'ajustes' && <h2 className="text-lg font-bold text-slate-900">{actual.icono} {actual.titulo}</h2>}
       <div key={actual.id} className="animar-entrada">

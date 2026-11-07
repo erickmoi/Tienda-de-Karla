@@ -44,6 +44,8 @@
 @media (display-mode: standalone) { :root { --espacio-arriba: 1.25rem; } }
 
 html, body, #root { min-height: 100%; }
+/* Nada puede ensanchar la página hacia los lados (evita que el celular la achique) */
+html, body { overflow-x: clip; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;

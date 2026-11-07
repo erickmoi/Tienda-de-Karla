@@ -426,16 +426,16 @@ export default function Ajustes({ avisar }) {
       </section>
       )}
 
-      <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
-        {pendientes && (
-          <p className="animar-entrada mb-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-center text-xs font-semibold text-amber-900 shadow">
+      {pendientes && (
+        <div className="animar-entrada sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
+          <p className="mb-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-center text-xs font-semibold text-amber-900 shadow">
             Tienes cambios sin guardar. Si sales sin guardar, se pierden.
           </p>
-        )}
-        <button disabled={guardando || !pendientes} className="btn-primario w-full shadow-lg disabled:opacity-60">
-          {guardando ? 'Guardando…' : pendientes ? 'Guardar cambios' : 'Todo guardado ✓'}
-        </button>
-      </div>
+          <button disabled={guardando} className="btn-primario w-full shadow-lg">
+            {guardando ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+      )}
     </form>
     )}
     </div>
