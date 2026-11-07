@@ -19,6 +19,8 @@ const ICONOS = {
   recordar_cobro: '🔔',
   rechazar_pago: '❌',
   pago_automatico: '⚡',
+  asignar_limite: '💳',
+  conteo_inventario: '📋',
 }
 
 const ROLES = { superadmin: 'superadmin', admin: 'administración', colaborador: 'colaborador', cliente: 'cliente' }
@@ -57,6 +59,10 @@ function describir(e, nombres) {
       return `Creó la cuenta de ${d.nombre} (@${d.usuario})`
     case 'restablecer_pin':
       return `Restableció el PIN de ${d.nombre ?? quien(d.usuario_id)}`
+    case 'asignar_limite':
+      return d.limite == null ? `Quitó el límite propio de ${quien(d.usuario_id)}` : `Puso a ${quien(d.usuario_id)} un límite de ${dinero(d.limite)}`
+    case 'conteo_inventario':
+      return `Hizo conteo de inventario: ${d.productos} productos ajustados`
     case 'pago_automatico':
       return `${quien(d.cliente_id)} registró un pago de ${dinero(d.monto)} (${d.metodo}), aplicado automáticamente`
     case 'rechazar_pago':

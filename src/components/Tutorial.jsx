@@ -7,8 +7,8 @@ export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes,
   const pasos = useMemo(() => {
     const p = [
       { titulo: `¡Hola, ${nombre}! 👋`, texto: 'Te muestro cómo usar la tienda en menos de un minuto.', vista: 'menu' },
-      { objetivo: 'categorias', vista: 'menu', titulo: 'Categorías', texto: 'Toca una categoría para ver solo esos productos. También puedes buscar arriba.' },
-      { objetivo: 'producto', vista: 'menu', titulo: 'Agrega lo que tomes', texto: 'Usa + y − para elegir cuántos tomaste. Los agotados aparecen en gris al final.' },
+      { objetivo: 'categorias', vista: 'menu', titulo: 'Categorías', texto: 'Toca una categoría para ver solo esos productos. Con 🔎 buscas, y en 🔥 Promos están las ofertas.' },
+      { objetivo: 'producto', vista: 'menu', titulo: 'Agrega lo que tomes', texto: 'Toca + para agregar; aparecen − y la cantidad para ajustar. Los agotados salen en gris al final.' },
       {
         titulo: '🛒 Registra tu compra',
         texto: pagosClientes

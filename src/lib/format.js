@@ -19,5 +19,7 @@ export function mensajeError(e) {
   if (msg.includes('perfiles_usuario_check'))
     return 'El usuario solo puede tener letras, números, punto o guion bajo (3 a 30).'
   if (msg.includes('rate limit')) return 'Demasiados intentos. Espera un momento.'
+  if (msg.includes('Database error saving new user') || msg.includes('REGISTRO_CERRADO'))
+    return 'El registro de cuentas está cerrado. Pide que te creen la cuenta.'
   return msg
 }

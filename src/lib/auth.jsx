@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
     setCargandoPerfil(true)
     const { data } = await supabase
       .from('perfiles')
-      .select('id, usuario, nombre, rol, permisos, activo, tema, telefono, tutorial_visto')
+      .select('id, usuario, nombre, rol, permisos, activo, aprobado, limite_deuda, tema, telefono, tutorial_visto')
       .eq('id', session.user.id)
       .maybeSingle()
     setPerfil(data)

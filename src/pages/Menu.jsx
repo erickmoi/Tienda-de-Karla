@@ -1,30 +1,38 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useApariencia, useEncargada } from '../lib/apariencia'
 import { dinero, mensajeError } from '../lib/format'
 import { vibrar } from '../lib/tema'
+import { calcularDescuentos, cargarPromos, etiquetaPromo, faltaParaPromo } from '../lib/promos'
+import { encolar, enviarPendientes, esErrorDeRed, pendientes } from '../lib/cola'
 import { Contador, Exito, Hoja, Vacio } from '../components/ui'
 import { FormaDePago } from '../components/ListaCompras'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 const GRID = {
-  1: 'grid-cols-1',
-  2: 'grid-cols-2 sm:grid-cols-3',
-  3: 'grid-cols-3 sm:grid-cols-4',
+  1: 'grid-cols-1 gap-2',
+  2: 'grid-cols-2 gap-2.5 sm:grid-cols-3',
+  3: 'grid-cols-3 gap-2 sm:grid-cols-4',
 }
 
-export default function Menu({ avisar, onCompra }) {
+// Color suave por categoría cuando el producto no tiene foto
+const TINTES = ['#fde68a', '#fbcfe8', '#bfdbfe', '#bbf7d0', '#ddd6fe', '#fed7aa', '#a5f3fc', '#fecaca']
+
+export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const { perfil } = useAuth()
-  const { apariencia } = useApariencia()
+  const { apariencia, recargar } = useApariencia()
+  const encargada = useEncargada()
   const columnas = apariencia.columnas_menu ?? 2
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState(null)
-  const [ultima, setUltima] = useState([]) // [{producto_id, cantidad}]
+  const [promos, setPromos] = useState([])
+  const [ultima, setUltima] = useState([])
   const [catActiva, setCatActiva] = useState('todas')
+  const [buscando, setBuscando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
-  const [carrito, setCarrito] = useState({}) // { productoId: cantidad }
+  const [carrito, setCarrito] = useState({})
   const [verCarrito, setVerCarrito] = useState(false)
   const [registrando, setRegistrando] = useState(false)
   const [exito, setExito] = useState(null)
@@ -32,50 +40,120 @@ export default function Menu({ avisar, onCompra }) {
   const [pagado, setPagado] = useState(false)
   const [metodo, setMetodo] = useState('efectivo')
   const [referencia, setReferencia] = useState('')
-  const encargada = useEncargada()
+  const [enCola, setEnCola] = useState(pendientes().length)
+  const [enLinea, setEnLinea] = useState(navigator.onLine)
+  const inputBusqueda = useRef(null)
 
   const cargar = useCallback(async () => {
-    const [c, p, u] = await Promise.all([
-      supabase.from('categorias').select('id, nombre, orden').eq('activo', true).order('orden').order('nombre'),
+    const [c, p, u, pr] = await Promise.all([
+      supabase.from('categorias').select('id, nombre, orden, emoji').eq('activo', true).order('orden').order('nombre'),
       supabase.from('productos').select('id, nombre, precio, foto_url, stock, agotado, categoria_id').eq('activo', true),
       supabase.from('compras').select('compra_items(producto_id, cantidad)').eq('usuario_id', perfil.id)
         .eq('anulada', false).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      cargarPromos().catch(() => []),
     ])
     if (c.error || p.error) return avisar('error', mensajeError(c.error || p.error))
     setCategorias(c.data)
     setProductos(p.data)
     setUltima(u.data?.compra_items ?? [])
+    setPromos(pr)
   }, [avisar, perfil.id])
 
   useEffect(() => { cargar() }, [cargar])
 
-  // Al volver a la app, el stock se actualiza (otros pudieron comprar)
+  // Stock en vivo: si alguien compra, se actualiza aquí sin recargar
   useEffect(() => {
-    const alVolver = () => document.visibilityState === 'visible' && cargar()
-    document.addEventListener('visibilitychange', alVolver)
-    return () => document.removeEventListener('visibilitychange', alVolver)
-  }, [cargar])
+    const canal = supabase
+      .channel('productos-en-vivo')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'productos' }, ({ new: n }) => {
+        setProductos((ps) => ps?.map((p) => (p.id === n.id ? { ...p, stock: n.stock, agotado: n.agotado, precio: n.precio } : p)))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(canal) }
+  }, [])
+
+  // Al volver a la app: refresca datos, horario y envía compras guardadas sin conexión
+  const sincronizar = useCallback(async () => {
+    setEnLinea(navigator.onLine)
+    if (!navigator.onLine) return
+    if (pendientes().length) {
+      const r = await enviarPendientes()
+      if (r.enviados) {
+        avisar('ok', r.enviados === 1 ? 'Se envió tu compra guardada.' : `Se enviaron ${r.enviados} compras guardadas.`)
+        onCompra?.()
+      }
+      if (r.fallidos.length) avisar('error', `Una compra guardada no se pudo registrar: ${r.fallidos[0].mensaje}`)
+    }
+    cargar()
+    recargar()
+  }, [avisar, cargar, onCompra, recargar])
+
+  useEffect(() => {
+    const visible = () => document.visibilityState === 'visible' && sincronizar()
+    const cola = () => setEnCola(pendientes().length)
+    const offline = () => setEnLinea(false)
+    document.addEventListener('visibilitychange', visible)
+    window.addEventListener('online', sincronizar)
+    window.addEventListener('offline', offline)
+    window.addEventListener('cola-cambio', cola)
+    if (pendientes().length) sincronizar()
+    return () => {
+      document.removeEventListener('visibilitychange', visible)
+      window.removeEventListener('online', sincronizar)
+      window.removeEventListener('offline', offline)
+      window.removeEventListener('cola-cambio', cola)
+    }
+  }, [sincronizar])
+
+  useEffect(() => { if (buscando) inputBusqueda.current?.focus() }, [buscando])
+
+  const porId = useMemo(() => Object.fromEntries((productos ?? []).map((p) => [p.id, p])), [productos])
+  const emojiCat = useMemo(() => Object.fromEntries(categorias.map((c, i) => [c.id, { emoji: c.emoji, tinte: TINTES[i % TINTES.length] }])), [categorias])
+
+  // Promociones por producto (para la etiqueta en la tarjeta)
+  const promoDe = useMemo(() => {
+    const m = {}
+    for (const pr of promos) for (const pp of pr.promocion_productos ?? []) m[pp.producto_id] ??= pr
+    return m
+  }, [promos])
+  const idsEnPromo = useMemo(() => new Set(Object.keys(promoDe).map(Number)), [promoDe])
 
   const visibles = useMemo(() => {
     if (!productos) return []
     const q = sinAcentos(busqueda.trim())
     return productos
-      .filter((p) => (q ? sinAcentos(p.nombre).includes(q) : catActiva === 'todas' || p.categoria_id === catActiva))
+      .filter((p) =>
+        q ? sinAcentos(p.nombre).includes(q)
+          : catActiva === 'todas' ? true
+          : catActiva === 'promos' ? idsEnPromo.has(p.id)
+          : p.categoria_id === catActiva)
       .sort((a, b) => Number(a.agotado) - Number(b.agotado) || a.nombre.localeCompare(b.nombre))
-  }, [productos, catActiva, busqueda])
+  }, [productos, catActiva, busqueda, idsEnPromo])
 
-  const porId = useMemo(() => Object.fromEntries((productos ?? []).map((p) => [p.id, p])), [productos])
   const items = Object.entries(carrito)
     .filter(([, n]) => n > 0)
     .map(([id, cantidad]) => ({ producto: porId[id], cantidad }))
     .filter((i) => i.producto)
   const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0)
-  const total = items.reduce((s, i) => s + i.cantidad * Number(i.producto.precio), 0)
+  const subtotal = items.reduce((s, i) => s + i.cantidad * Number(i.producto.precio), 0)
+  const descuentos = useMemo(
+    () => calcularDescuentos(items.map((i) => ({ producto_id: i.producto.id, cantidad: i.cantidad, precio: i.producto.precio })), promos),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [carrito, promos, porId],
+  )
+  const ahorro = descuentos.reduce((s, d) => s + d.descuento, 0)
+  const total = Math.max(0, subtotal - ahorro)
 
-  // "Lo de siempre": solo lo que sigue disponible
   const loDeSiempre = ultima
     .map((i) => ({ producto: porId[i.producto_id], cantidad: i.cantidad }))
     .filter((i) => i.producto && !i.producto.agotado)
+
+  // Límite de deuda (aviso o bloqueo)
+  const limite = perfil.limite_deuda ?? apariencia.limite_deuda
+  const conLimite = limite != null && Number(limite) > 0
+  const quedaria = saldo + (pagado ? 0 : total)
+  const pasaLimite = conLimite && quedaria > Number(limite)
+  const cerrada = apariencia.abierta === false
 
   const cambiar = (id, delta) => {
     if (delta > 0) {
@@ -87,96 +165,136 @@ export default function Menu({ avisar, onCompra }) {
 
   function repetir() {
     vibrar(15)
-    setCarrito(() => {
-      const nuevo = {}
-      for (const { producto, cantidad } of loDeSiempre) nuevo[producto.id] = Math.min(cantidad, producto.stock)
-      return nuevo
-    })
+    const nuevo = {}
+    for (const { producto, cantidad } of loDeSiempre) nuevo[producto.id] = Math.min(cantidad, producto.stock)
+    setCarrito(nuevo)
     setVerCarrito(true)
   }
 
   async function registrar() {
-    setRegistrando(true)
     const conPago = pagado && apariencia.pagos_clientes
+    const pedido = {
+      items: items.map((i) => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
+      pagado: conPago,
+      metodo,
+      referencia: conPago && metodo === 'transferencia' ? referencia || null : null,
+    }
+    const terminar = (texto, sub) => {
+      vibrar([20, 40, 20])
+      setExito({ texto, sub })
+      setCarrito({})
+      setPagado(false)
+      setReferencia('')
+      setVerCarrito(false)
+    }
+
+    if (!navigator.onLine) {
+      encolar(pedido)
+      return terminar('Guardada 📶', 'Sin internet: se enviará sola cuando vuelva la conexión.')
+    }
+
+    setRegistrando(true)
     const { error } = await supabase.rpc('registrar_compra', {
-      p_items: items.map((i) => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
-      p_pagado: conPago,
-      p_metodo: metodo,
-      p_referencia: conPago && metodo === 'transferencia' ? referencia || null : null,
+      p_items: pedido.items, p_pagado: pedido.pagado, p_metodo: pedido.metodo, p_referencia: pedido.referencia,
     })
     setRegistrando(false)
     if (error) {
+      if (esErrorDeRed(error)) {
+        encolar(pedido)
+        return terminar('Guardada 📶', 'La conexión falló: se enviará sola cuando vuelva.')
+      }
       avisar('error', mensajeError(error))
-      cargar() // por si algo se agotó mientras tanto
+      cargar()
       return
     }
-    vibrar([20, 40, 20])
-    setExito(conPago
-      ? { texto: '¡Registrado!', sub: apariencia.pagos_auto ? `Compra pagada: ${dinero(total)}. ¡Buen provecho!` : `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.` }
-      : { texto: '¡Registrado!', sub: `${dinero(total)} a tu cuenta. ¡Buen provecho!` })
-    setCarrito({})
-    setPagado(false)
-    setReferencia('')
-    setVerCarrito(false)
+    terminar('¡Registrado!', conPago
+      ? apariencia.pagos_auto ? `Compra pagada: ${dinero(total)}. ¡Buen provecho!` : `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.`
+      : `${dinero(total)} a tu cuenta.${ahorro > 0 ? ` Ahorraste ${dinero(ahorro)} 🎉` : ' ¡Buen provecho!'}`)
     cargar()
     onCompra?.()
   }
 
   if (!productos) return <EsqueletoMenu columnas={columnas} />
 
+  const chips = [
+    ...(promos.length ? [{ id: 'promos', nombre: 'Promos', emoji: '🔥', promo: true }] : []),
+    { id: 'todas', nombre: 'Todo', emoji: '✨' },
+    ...categorias,
+  ]
+
   return (
     <div className="pb-28">
-      {/* Buscador */}
-      <div className="relative mb-2">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
-        <input className="input pl-10" type="search" placeholder="Buscar producto" value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)} />
-      </div>
-
-      {/* Categorías */}
-      {!busqueda && (
-        <div data-tour="categorias" className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
-          {[{ id: 'todas', nombre: 'Todo' }, ...categorias].map((c) => (
-            <button
-              key={c.id}
-              onClick={() => { vibrar(6); setCatActiva(c.id) }}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
-                catActiva === c.id ? 'scale-105 bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
-              }`}
-            >
-              {c.nombre}
-            </button>
-          ))}
-        </div>
+      {/* Avisos de estado */}
+      {!enLinea && (
+        <p className="mb-2 rounded-xl bg-slate-800 px-3 py-2 text-center text-sm font-medium text-slate-50">
+          📶 Sin conexión. Puedes registrar y se enviará cuando vuelva.
+        </p>
+      )}
+      {enCola > 0 && enLinea && (
+        <button onClick={sincronizar} className="mb-2 w-full rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 ring-1 ring-amber-200">
+          ⏳ {enCola === 1 ? '1 compra guardada' : `${enCola} compras guardadas`} por enviar · Enviar ahora
+        </button>
+      )}
+      {cerrada && (
+        <p className="mb-2 rounded-xl bg-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700">
+          🔒 {apariencia.mensaje_cerrado}
+        </p>
       )}
 
-      {/* Lo de siempre */}
-      {!busqueda && loDeSiempre.length > 0 && totalUnidades === 0 && (
-        <button onClick={repetir}
-          className="animar-entrada tarjeta mb-3 flex w-full items-center gap-3 p-3 text-left ring-marca/30 transition active:scale-[0.98]">
-          <span className="text-2xl">🔁</span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-marca-texto">Lo de siempre</span>
-            <span className="block truncate text-xs text-slate-500">
-              {loDeSiempre.map((i) => `${i.cantidad} × ${i.producto.nombre}`).join(', ')}
-            </span>
-          </span>
-          <span className="text-sm font-semibold text-slate-400">›</span>
-        </button>
+      {/* Fila fija: lupa + "Lo de siempre" + promos + categorías */}
+      <div data-tour="categorias"
+        className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
+        {buscando ? (
+          <div className="animar-entrada flex items-center gap-2">
+            <input ref={inputBusqueda} className="input py-2" type="search" placeholder="Buscar producto" value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)} />
+            <button onClick={() => { setBuscando(false); setBusqueda('') }}
+              className="shrink-0 px-2 text-sm font-semibold text-slate-500">Cerrar</button>
+          </div>
+        ) : (
+          <div className="flex gap-2 overflow-x-auto">
+            <button onClick={() => setBuscando(true)} aria-label="Buscar"
+              className="shrink-0 rounded-full bg-superficie px-3 py-1.5 ring-1 ring-slate-200">🔎</button>
+            {loDeSiempre.length > 0 && totalUnidades === 0 && (
+              <button onClick={repetir} title={loDeSiempre.map((i) => `${i.cantidad} × ${i.producto.nombre}`).join(', ')}
+                className="shrink-0 rounded-full bg-marca-claro px-3 py-1.5 text-sm font-semibold text-marca-texto">
+                🔁 Lo de siempre
+              </button>
+            )}
+            {chips.map((c) => (
+              <button key={c.id} onClick={() => { vibrar(6); setCatActiva(c.id) }}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                  catActiva === c.id
+                    ? c.promo ? 'scale-105 bg-orange-500 text-white shadow' : 'scale-105 bg-marca text-sobre-marca shadow'
+                    : c.promo ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
+                }`}>
+                {c.emoji} {c.nombre}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tarjetas de promociones (en la vista Promos) */}
+      {catActiva === 'promos' && !busqueda && (
+        <div className="escalonado mb-3 space-y-2">
+          {promos.map((pr) => <TarjetaPromo key={pr.id} pr={pr} porId={porId} carrito={carrito} />)}
+        </div>
       )}
 
       {visibles.length === 0 ? (
         <Vacio>{busqueda ? 'No encontramos ese producto.' : 'No hay productos aquí todavía.'}</Vacio>
       ) : (
-        <div key={`${catActiva}-${busqueda ? 'b' : ''}`} className={`escalonado grid gap-3 ${GRID[columnas] ?? GRID[2]}`}>
+        <div key={`${catActiva}-${busqueda ? 'b' : ''}`} className={`escalonado grid ${GRID[columnas] ?? GRID[2]}`}>
           {visibles.map((p, i) => (
             <TarjetaProducto
               key={p.id}
               p={p}
+              modo={columnas}
               tour={i === 0}
+              cat={emojiCat[p.categoria_id]}
+              promo={promoDe[p.id]}
               mostrarStock={apariencia.mostrar_stock}
-              lista={columnas === 1}
-              compacta={columnas === 3}
               enCarrito={carrito[p.id] || 0}
               pop={pop.id === p.id ? pop.n : 0}
               onCambiar={cambiar}
@@ -194,7 +312,10 @@ export default function Menu({ avisar, onCompra }) {
               <span className="rounded-full bg-sobre-marca/20 px-2 py-0.5 text-sm">{totalUnidades}</span>
               Ver carrito
             </span>
-            <span className="tabular-nums">{dinero(total)}</span>
+            <span className="tabular-nums">
+              {ahorro > 0 && <span className="mr-2 text-sm line-through opacity-70">{dinero(subtotal)}</span>}
+              {dinero(total)}
+            </span>
           </button>
         </div>
       )}
@@ -204,27 +325,45 @@ export default function Menu({ avisar, onCompra }) {
           {items.length === 0 ? <Vacio>El carrito está vacío.</Vacio> : (
             <ul className="divide-y divide-slate-100">
               {items.map(({ producto, cantidad }) => (
-                <li key={producto.id} className="flex items-center justify-between gap-3 py-3">
+                <li key={producto.id} className="flex items-center justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-slate-900">{producto.nombre}</p>
-                    <p className="text-sm text-slate-500">
-                      {dinero(producto.precio)} × {cantidad} = {dinero(producto.precio * cantidad)}
-                    </p>
+                    <p className="text-sm text-slate-500">{dinero(producto.precio)} × {cantidad} = {dinero(producto.precio * cantidad)}</p>
                   </div>
-                  <Contador
-                    valor={cantidad}
-                    onMenos={() => cambiar(producto.id, -1)}
-                    onMas={() => cambiar(producto.id, 1)}
-                    maxAlcanzado={cantidad >= producto.stock}
-                  />
+                  <Contador valor={cantidad} onMenos={() => cambiar(producto.id, -1)} onMas={() => cambiar(producto.id, 1)}
+                    maxAlcanzado={cantidad >= producto.stock} />
                 </li>
               ))}
             </ul>
           )}
-          <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 text-lg font-bold text-slate-900">
-            <span>Total</span>
-            <span className="tabular-nums">{dinero(total)}</span>
+
+          {/* Promos que faltan poco para activarse */}
+          {promos.map((pr) => {
+            const falta = faltaParaPromo(pr, carrito)
+            return falta ? (
+              <p key={pr.id} className="mt-2 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700">
+                🔥 Agrega {falta} más de “{pr.nombre}” y activas {etiquetaPromo(pr)}
+              </p>
+            ) : null
+          })}
+
+          <div className="mt-3 space-y-1 border-t border-slate-200 pt-3 text-sm">
+            {ahorro > 0 && (
+              <>
+                <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">{dinero(subtotal)}</span></div>
+                {descuentos.map((d) => (
+                  <div key={d.promo.id} className="flex justify-between font-medium text-orange-600">
+                    <span>🔥 {d.promo.nombre}{d.veces > 1 ? ` ×${d.veces}` : ''}</span>
+                    <span className="tabular-nums">−{dinero(d.descuento)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+            <div className="flex items-center justify-between text-lg font-bold text-slate-900">
+              <span>Total</span><span className="tabular-nums">{dinero(total)}</span>
+            </div>
           </div>
+
           {apariencia.pagos_clientes && (
             <div className="mt-4 space-y-3">
               <p className="etiqueta">¿Cómo queda?</p>
@@ -244,8 +383,22 @@ export default function Menu({ avisar, onCompra }) {
               )}
             </div>
           )}
-          <button onClick={registrar} disabled={registrando || totalUnidades === 0} className="btn-primario mt-4 w-full">
-            {registrando ? 'Registrando…' : pagado && apariencia.pagos_clientes ? (apariencia.pagos_auto ? 'Registrar como pagada' : 'Registrar y avisar pago') : 'Registrar compra'}
+
+          {pasaLimite && (
+            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${apariencia.limite_bloquea ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>
+              {apariencia.limite_bloquea
+                ? `⛔ Con esta compra pasarías tu límite de ${dinero(limite)}. Paga lo pendiente o marca “Ya pagué”.`
+                : `⚠️ Con esta compra quedarías debiendo ${dinero(quedaria)} (tu límite es ${dinero(limite)}).`}
+            </p>
+          )}
+
+          <button onClick={registrar}
+            disabled={registrando || totalUnidades === 0 || cerrada || (pasaLimite && apariencia.limite_bloquea)}
+            className="btn-primario mt-4 w-full">
+            {cerrada ? '🔒 Tienda cerrada'
+              : registrando ? 'Registrando…'
+              : pagado && apariencia.pagos_clientes ? (apariencia.pagos_auto ? 'Registrar como pagada' : 'Registrar y avisar pago')
+              : 'Registrar compra'}
           </button>
           <p className="mt-2 text-center text-xs text-slate-500">
             {pagado && apariencia.pagos_clientes
@@ -260,57 +413,105 @@ export default function Menu({ avisar, onCompra }) {
   )
 }
 
-function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour, mostrarStock }) {
+function TarjetaPromo({ pr, porId, carrito }) {
+  const productos = (pr.promocion_productos ?? []).map((pp) => ({ ...pp, p: porId[pp.producto_id] })).filter((x) => x.p)
+  const falta = faltaParaPromo(pr, carrito)
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 p-3 text-white shadow">
+      <span aria-hidden="true" className="absolute -right-4 -top-6 text-7xl opacity-20">🔥</span>
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-bold">{pr.nombre}</p>
+          <p className="text-xs opacity-90">
+            {pr.tipo === 'cantidad'
+              ? `Lleva ${pr.cantidad} ${productos.length > 1 ? '(puedes combinar)' : ''} por ${dinero(pr.precio)}`
+              : productos.map((x) => `${x.cantidad > 1 ? `${x.cantidad} × ` : ''}${x.p.nombre}`).join(' + ')}
+          </p>
+          {pr.hasta && <p className="mt-0.5 text-[11px] opacity-80">Hasta el {new Date(`${pr.hasta}T12:00:00`).toLocaleDateString('es-SV', { day: 'numeric', month: 'short' })}</p>}
+        </div>
+        <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-sm font-bold text-orange-600">{etiquetaPromo(pr)}</span>
+      </div>
+      {falta && <p className="relative mt-1.5 text-xs font-semibold">¡{falta === 1 ? 'Te falta 1' : `Te faltan ${falta}`} para activarla!</p>}
+    </div>
+  )
+}
+
+function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo, mostrarStock }) {
+  const lista = modo === 1
+  const compacta = modo === 3
   const quedan = p.stock - enCarrito
+  const tourAttr = tour ? { 'data-tour': 'producto' } : {}
+  const marcado = enCarrito > 0 ? 'ring-2 ring-marca' : ''
+  const apagado = p.agotado ? 'opacity-50 grayscale' : ''
+
   const stockTxt = mostrarStock && !p.agotado ? (
-    <span className={`text-xs font-medium ${quedan <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
+    <span className={`text-[11px] font-medium ${quedan <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
       {quedan > 0 ? `Quedan ${quedan}` : 'No quedan más'}
     </span>
   ) : null
-  const foto = (
-    <span key={pop} className={`flex items-center justify-center overflow-hidden rounded-xl bg-marca-claro ${pop ? 'animar-pop' : ''} ${
-      lista ? 'h-14 w-14 shrink-0 text-2xl' : `mb-2 aspect-square w-full ${compacta ? 'text-2xl' : 'text-4xl'}`
-    }`}>
-      {p.foto_url ? <img src={p.foto_url} alt="" loading="lazy" className="h-full w-full object-cover" /> : '🍬'}
+  const promoTag = promo && !p.agotado ? (
+    <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">🔥 {etiquetaPromo(promo)}</span>
+  ) : null
+
+  const imagen = (tam) => (
+    <span key={pop} className={`relative flex items-center justify-center overflow-hidden ${pop ? 'animar-pop' : ''} ${tam}`}
+      style={p.foto_url ? undefined : { background: `color-mix(in oklab, ${cat?.tinte ?? '#e2e8f0'} 55%, var(--color-superficie))` }}>
+      {p.foto_url
+        ? <img src={p.foto_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+        : <span className={lista ? 'text-2xl' : compacta ? 'text-2xl' : 'text-3xl'}>{cat?.emoji ?? '🛍️'}</span>}
     </span>
   )
 
-  const control = p.agotado ? (
-    <span className="rounded-lg bg-slate-200 px-2 py-2 text-center text-xs font-bold uppercase text-slate-600">Agotado</span>
-  ) : (
-    <Contador
-      valor={enCarrito}
-      onMenos={() => onCambiar(p.id, -1)}
-      onMas={() => onCambiar(p.id, 1)}
-      maxAlcanzado={enCarrito >= p.stock}
-    />
+  const botonMas = (
+    <button onClick={() => onCambiar(p.id, 1)} disabled={enCarrito >= p.stock} aria-label={`Agregar ${p.nombre}`}
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-marca text-xl font-bold text-sobre-marca shadow-md transition active:scale-90 disabled:opacity-40">
+      +
+    </button>
   )
+  const control = p.agotado ? (
+    <span className="rounded-md bg-slate-700/80 px-2 py-1 text-[10px] font-bold uppercase text-white">Agotado</span>
+  ) : enCarrito > 0 ? (
+    <div className="flex items-center gap-1 rounded-full bg-superficie/95 p-0.5 shadow-md ring-1 ring-slate-200">
+      <button onClick={() => onCambiar(p.id, -1)} aria-label="Quitar uno"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold text-slate-700 active:scale-90">−</button>
+      <span key={enCarrito} className="animar-pop w-5 text-center text-sm font-bold tabular-nums text-slate-900">{enCarrito}</span>
+      <button onClick={() => onCambiar(p.id, 1)} disabled={enCarrito >= p.stock} aria-label="Agregar uno"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-marca text-lg font-bold text-sobre-marca active:scale-90 disabled:opacity-40">+</button>
+    </div>
+  ) : botonMas
 
-  const marcado = enCarrito > 0 ? 'ring-2 ring-marca' : ''
-  const tourAttr = tour ? { 'data-tour': 'producto' } : {}
-  const apagado = p.agotado ? 'opacity-50 grayscale' : ''
-
+  // ---- Vista de lista: una fila delgada ----
   if (lista) {
     return (
-      <div {...tourAttr} className={`tarjeta flex items-center gap-3 p-2.5 transition ${marcado} ${apagado}`}>
-        {foto}
+      <div {...tourAttr} className={`tarjeta flex items-center gap-3 p-2 transition ${marcado} ${apagado}`}>
+        {imagen('h-12 w-12 shrink-0 rounded-xl')}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-slate-800">{p.nombre}</p>
-          <p className="font-bold text-marca-texto">{dinero(p.precio)}</p>
-          {stockTxt}
+          <p className="truncate text-sm font-semibold text-slate-800">{p.nombre}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-sm font-bold text-marca-texto">{dinero(p.precio)}</span>
+            {promoTag}{stockTxt}
+          </div>
         </div>
         {control}
       </div>
     )
   }
 
+  // ---- Vista en cuadrícula: foto 4:3 con botón flotante ----
   return (
-    <div {...tourAttr} className={`tarjeta flex flex-col p-3 transition ${marcado} ${apagado}`}>
-      {foto}
-      <p className={`line-clamp-2 font-semibold text-slate-800 ${compacta ? 'min-h-8 text-xs' : 'min-h-10 text-sm'}`}>{p.nombre}</p>
-      <p className={`font-bold text-marca-texto ${compacta ? 'text-sm' : ''} ${stockTxt ? '' : 'mb-2'}`}>{dinero(p.precio)}</p>
-      {stockTxt && <p className="mb-2">{stockTxt}</p>}
-      <div className={`mt-auto flex justify-center ${compacta ? 'origin-bottom scale-90' : ''}`}>{control}</div>
+    <div {...tourAttr} className={`tarjeta flex flex-col overflow-hidden p-0 transition ${marcado} ${apagado}`}>
+      <div className="relative">
+        {imagen(compacta ? 'aspect-[5/4] w-full' : 'aspect-[16/10] w-full')}
+        {promoTag && <span className="absolute left-1.5 top-1.5">{promoTag}</span>}
+        <span className={`absolute bottom-1.5 right-1.5 ${compacta ? 'origin-bottom-right scale-90' : ''}`}>{control}</span>
+      </div>
+      <div className={compacta ? 'px-2 pb-2 pt-1.5' : 'px-2.5 pb-2.5 pt-2'}>
+        <p className={`line-clamp-2 font-semibold leading-tight text-slate-800 ${compacta ? 'text-xs' : 'text-sm'}`}>{p.nombre}</p>
+        <div className="mt-0.5 flex items-center justify-between gap-1">
+          <span className={`font-bold text-marca-texto ${compacta ? 'text-xs' : 'text-sm'}`}>{dinero(p.precio)}</span>
+          {stockTxt}
+        </div>
+      </div>
     </div>
   )
 }
@@ -318,13 +519,12 @@ function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour, 
 function EsqueletoMenu({ columnas }) {
   return (
     <div aria-busy="true" aria-label="Cargando menú">
-      <div className="esqueleto mb-3 h-11" />
       <div className="mb-4 flex gap-2">
-        {[64, 90, 80, 70].map((w, i) => <div key={i} className="esqueleto h-8" style={{ width: w }} />)}
+        {[40, 90, 64, 80, 70].map((w, i) => <div key={i} className="esqueleto h-8" style={{ width: w }} />)}
       </div>
-      <div className={`grid gap-3 ${GRID[columnas] ?? GRID[2]}`}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className={`esqueleto ${columnas === 1 ? 'h-20' : 'aspect-[3/4]'}`} />
+      <div className={`grid ${GRID[columnas] ?? GRID[2]}`}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className={`esqueleto ${columnas === 1 ? 'h-16' : 'aspect-[4/5]'}`} />
         ))}
       </div>
     </div>

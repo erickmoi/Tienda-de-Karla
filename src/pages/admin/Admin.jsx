@@ -7,12 +7,16 @@ import Estadisticas from './Estadisticas'
 import Usuarios from './Usuarios'
 import Ajustes from './Ajustes'
 import Bitacora from './Bitacora'
+import Promociones from './Promociones'
+import Caja from './Caja'
 
 export default function Admin({ avisar, pendientes = 0, onPendientes }) {
   const { perfil } = useAuth()
   const secciones = [
     { id: 'deudores', titulo: '💵 Deudores', insignia: pendientes, ver: puede(perfil, 'deudores') || puede(perfil, 'pagos'), C: Deudores },
+    { id: 'caja', titulo: '💰 Caja', ver: puede(perfil, 'pagos') || puede(perfil, 'estadisticas'), C: Caja },
     { id: 'productos', titulo: '🏷️ Productos', ver: puede(perfil, 'productos') || puede(perfil, 'inventario'), C: Productos },
+    { id: 'promos', titulo: '🔥 Promos', ver: puede(perfil, 'productos'), C: Promociones },
     { id: 'estadisticas', titulo: '📊 Estadísticas', ver: puede(perfil, 'estadisticas'), C: Estadisticas },
     { id: 'usuarios', titulo: '👥 Usuarios', ver: puede(perfil, 'usuarios'), C: Usuarios },
     { id: 'ajustes', titulo: '🎨 Ajustes', ver: puede(perfil, 'ajustes'), C: Ajustes },

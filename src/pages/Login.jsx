@@ -54,7 +54,7 @@ export default function Login() {
           <p className="text-sm text-slate-500">{apariencia.frase}</p>
         </div>
 
-        <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
+        {apariencia.registro !== 'cerrado' && <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
           {['entrar', 'crear'].map((m) => (
             <button
               key={m}
@@ -64,7 +64,7 @@ export default function Login() {
               {m === 'entrar' ? 'Entrar' : 'Crear cuenta'}
             </button>
           ))}
-        </div>
+        </div>}
 
         <form onSubmit={enviar} className="space-y-4">
           <div>
@@ -98,6 +98,12 @@ export default function Login() {
           <button type="submit" disabled={enviando} className="btn-primario w-full">
             {enviando ? 'Un momento…' : modo === 'entrar' ? 'Entrar' : 'Crear mi cuenta'}
           </button>
+          {apariencia.registro === 'cerrado' && (
+            <p className="text-center text-xs text-slate-500">¿No tienes cuenta? Pídele a {apariencia.nombre_encargada} que te la cree.</p>
+          )}
+          {apariencia.registro === 'aprobacion' && modo === 'crear' && (
+            <p className="text-center text-xs text-slate-500">{apariencia.nombre_encargada} aprobará tu cuenta antes de que puedas comprar.</p>
+          )}
           {modo === 'entrar' && (
             <p className="text-center text-xs text-slate-500">¿Olvidaste tu PIN? Pídele a {apariencia.nombre_encargada} que lo restablezca.</p>
           )}

@@ -34,6 +34,8 @@ Deno.serve(async (req) => {
         password: pin,
         email_confirm: true,
         user_metadata: { usuario, nombre },
+        // app_metadata solo lo puede escribir el servidor: permite crear cuentas aunque el registro esté cerrado
+        app_metadata: { creado_por_admin: true },
       })
       if (error) {
         const ya = /already|registered|exists/i.test(error.message)

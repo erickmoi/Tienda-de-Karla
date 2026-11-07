@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { borrarFoto, subirFoto } from '../../lib/fotos'
+
+const sinAcentos = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const EMOJIS_CAT = ['🍿', '🍬', '🍪', '🥐', '🥤', '🍫', '🍭', '🧃', '☕', '🍞', '🥜', '🧁', '🍦', '🌮', '🛍️']
 
 const VACIO = { nombre: '', categoria_id: '', precio: '', costo: '', foto_url: null, agotado_manual: false, activo: true }
 
@@ -16,6 +19,11 @@ export default function Productos({ avisar }) {
   const [editando, setEditando] = useState(null) // objeto producto o VACIO
   const [stockDe, setStockDe] = useState(null)
   const [verCategorias, setVerCategorias] = useState(false)
+  const [verConteo, setVerConteo] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtro, setFiltro] = useState('todas') // id de categoría, 'todas', 'agotados', 'sincosto'
+  const [lote, setLote] = useState(null) // Set de ids seleccionados, o null si no está en modo lote
+  const [verLote, setVerLote] = useState(false)
 
   const cargar = useCallback(async () => {
     const [p, c] = await Promise.all([
@@ -29,78 +37,258 @@ export default function Productos({ avisar }) {
 
   useEffect(() => { cargar() }, [cargar])
 
+  const visibles = useMemo(() => {
+    if (!productos) return []
+    const q = sinAcentos(busqueda.trim())
+    return productos.filter((p) =>
+      (!q || sinAcentos(p.nombre).includes(q)) &&
+      (filtro === 'todas' ? true
+        : filtro === 'agotados' ? p.agotado
+        : filtro === 'sincosto' ? !(Number(p.costo) > 0)
+        : p.categoria_id === filtro))
+  }, [productos, busqueda, filtro])
+
   if (!productos) return <Cargando />
 
-  const nombreCat = (id) => categorias.find((c) => c.id === id)?.nombre ?? 'Sin categoría'
+  const cat = (id) => categorias.find((c) => c.id === id)
+  const alternarLote = (id) => setLote((l) => {
+    const n = new Set(l)
+    if (n.has(id)) n.delete(id)
+    else n.add(id)
+    return n
+  })
+  const filtros = [
+    { id: 'todas', nombre: `Todos (${productos.length})` },
+    ...categorias.map((c) => ({ id: c.id, nombre: `${c.emoji} ${c.nombre}` })),
+    { id: 'agotados', nombre: `⛔ Agotados (${productos.filter((p) => p.agotado).length})` },
+    { id: 'sincosto', nombre: `❔ Sin costo (${productos.filter((p) => !(Number(p.costo) > 0)).length})` },
+  ]
 
   return (
-    <div className="space-y-4">
-      {puedeEditar && (
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={() => setEditando(VACIO)} className="btn-primario">+ Producto</button>
-          <button onClick={() => setVerCategorias(true)} className="btn-secundario">Categorías</button>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {puedeEditar && <button onClick={() => setEditando(VACIO)} className="btn-primario py-2 text-sm">+ Producto</button>}
+        {puedeInventario && <button onClick={() => setVerConteo(true)} className="btn-secundario py-2 text-sm">📋 Conteo</button>}
+        {puedeEditar && (
+          <button onClick={() => (lote ? setLote(null) : setLote(new Set()))}
+            className={`${lote ? 'btn-primario' : 'btn-secundario'} py-2 text-sm`}>
+            {lote ? '✕ Salir de lote' : '☑️ Editar en lote'}
+          </button>
+        )}
+        {puedeEditar && <button onClick={() => setVerCategorias(true)} className="btn-secundario py-2 text-sm">🗂️ Categorías</button>}
+      </div>
+
+      <input className="input" type="search" placeholder="Buscar producto" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
+        {filtros.map((f) => (
+          <button key={f.id} onClick={() => setFiltro(f.id)}
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+              filtro === f.id ? 'bg-slate-800 text-slate-50' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'}`}>
+            {f.nombre}
+          </button>
+        ))}
+      </div>
+
+      {lote && (
+        <div className="flex items-center justify-between rounded-xl bg-marca-claro px-3 py-2 text-sm">
+          <span className="font-semibold text-marca-texto">{lote.size} seleccionados</span>
+          <span className="flex gap-3">
+            <button onClick={() => setLote(new Set(visibles.map((p) => p.id)))} className="font-semibold text-marca-texto">Todos</button>
+            <button onClick={() => setLote(new Set())} className="font-semibold text-slate-500">Ninguno</button>
+          </span>
         </div>
       )}
 
-      {productos.length === 0 ? (
-        <Vacio>Aún no hay productos. Crea el primero.</Vacio>
+      {visibles.length === 0 ? (
+        <Vacio>{productos.length ? 'Ningún producto coincide.' : 'Aún no hay productos. Crea el primero.'}</Vacio>
       ) : (
-        <ul className="escalonado space-y-2">
-          {productos.map((p) => (
-            <li key={p.id} className={`tarjeta p-3 ${p.activo ? '' : 'opacity-50'}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-marca-claro text-xl">
-                  {p.foto_url ? <img src={p.foto_url} alt="" className="h-full w-full object-cover" /> : '🍬'}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{p.nombre}</p>
-                  <p className="text-xs text-slate-500">
-                    {nombreCat(p.categoria_id)} · {dinero(p.precio)}
-                    {Number(p.costo) > 0 && ` (costo ${dinero(p.costo)})`}
-                    {!p.activo && ' · Oculto'}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className={`font-bold ${p.agotado ? 'text-rose-600' : 'text-slate-800'}`}>{p.stock} u.</p>
-                  {p.agotado && <p className="text-xs font-semibold text-rose-600">
-                    {p.agotado_manual ? 'Agotado (manual)' : 'Agotado'}
-                  </p>}
-                </div>
-              </div>
-              <div className="mt-2 flex gap-2">
-                {puedeInventario && (
-                  <button onClick={() => setStockDe(p)} className="btn-secundario flex-1 py-1.5 text-sm">Inventario</button>
+        <ul className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-superficie ring-1 ring-slate-200">
+          {visibles.map((p) => {
+            const c = cat(p.categoria_id)
+            const elegido = lote?.has(p.id)
+            return (
+              <li key={p.id} className={`flex items-center gap-3 px-3 py-2 ${p.activo ? '' : 'opacity-50'} ${elegido ? 'bg-marca-claro' : ''}`}>
+                {lote && <input type="checkbox" checked={elegido} onChange={() => alternarLote(p.id)} aria-label={`Elegir ${p.nombre}`} />}
+                <button className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => (lote ? alternarLote(p.id) : puedeEditar && setEditando(p))}>
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-marca-claro text-lg">
+                    {p.foto_url ? <img src={p.foto_url} alt="" className="h-full w-full object-cover" /> : c?.emoji ?? '🛍️'}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-900">{p.nombre}</span>
+                    <span className="block text-xs text-slate-500">
+                      {dinero(p.precio)}{Number(p.costo) > 0 ? ` · costo ${dinero(p.costo)}` : ' · sin costo'}{!p.activo && ' · oculto'}
+                    </span>
+                  </span>
+                </button>
+                {!lote && (
+                  <button onClick={() => puedeInventario && setStockDe(p)} disabled={!puedeInventario}
+                    className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-bold tabular-nums ${
+                      p.agotado ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
+                    {p.agotado ? (p.agotado_manual ? '⛔' : '0') : p.stock}
+                  </button>
                 )}
-                {puedeEditar && (
-                  <button onClick={() => setEditando(p)} className="btn-secundario flex-1 py-1.5 text-sm">Editar</button>
-                )}
-              </div>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
+      )}
+      {!lote && <p className="text-center text-xs text-slate-500">Toca un producto para editarlo, o el número para ajustar su inventario.</p>}
+
+      {lote && lote.size > 0 && (
+        <div className="fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
+          <button onClick={() => setVerLote(true)} className="btn-primario w-full max-w-lg shadow-lg">
+            Cambiar {lote.size} productos
+          </button>
+        </div>
       )}
 
       {editando && (
-        <FormProducto
-          producto={editando}
-          categorias={categorias}
-          avisar={avisar}
-          onCerrar={() => setEditando(null)}
-          onGuardado={() => { setEditando(null); cargar() }}
-        />
+        <FormProducto producto={editando} categorias={categorias} avisar={avisar}
+          onCerrar={() => setEditando(null)} onGuardado={() => { setEditando(null); cargar() }} />
       )}
       {stockDe && (
-        <FormInventario
-          producto={stockDe}
-          avisar={avisar}
-          onCerrar={() => setStockDe(null)}
-          onGuardado={() => { setStockDe(null); cargar() }}
-        />
+        <FormInventario producto={stockDe} avisar={avisar}
+          onCerrar={() => setStockDe(null)} onGuardado={() => { setStockDe(null); cargar() }} />
       )}
       {verCategorias && (
         <Categorias categorias={categorias} avisar={avisar} onCerrar={() => setVerCategorias(false)} onCambio={cargar} />
       )}
+      {verConteo && (
+        <Conteo productos={productos} categorias={categorias} avisar={avisar}
+          onCerrar={() => setVerConteo(false)} onGuardado={() => { setVerConteo(false); cargar() }} />
+      )}
+      {verLote && (
+        <EdicionLote ids={[...lote]} categorias={categorias} avisar={avisar} onCerrar={() => setVerLote(false)}
+          onGuardado={() => { setVerLote(false); setLote(null); cargar() }} />
+      )}
     </div>
+  )
+}
+
+// Conteo físico: escribe lo que hay y se ajusta todo de una vez
+function Conteo({ productos, categorias, avisar, onCerrar, onGuardado }) {
+  const [valores, setValores] = useState(() => Object.fromEntries(productos.map((p) => [p.id, String(p.stock)])))
+  const [busqueda, setBusqueda] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const cambios = productos.filter((p) => valores[p.id] !== '' && Number(valores[p.id]) !== p.stock)
+  const q = sinAcentos(busqueda.trim())
+  const grupos = categorias.map((c) => ({ c, ps: productos.filter((p) => p.categoria_id === c.id && p.activo) }))
+  const sinCat = productos.filter((p) => p.activo && !categorias.some((c) => c.id === p.categoria_id))
+  if (sinCat.length) grupos.push({ c: { id: 0, nombre: 'Sin categoría', emoji: '🛍️' }, ps: sinCat })
+
+  async function guardar() {
+    if (!cambios.length) return onCerrar()
+    if (!confirm(`¿Ajustar el inventario de ${cambios.length} productos?`)) return
+    setGuardando(true)
+    const { data, error } = await supabase.rpc('conteo_inventario', {
+      p_conteo: cambios.map((p) => ({ producto_id: p.id, stock: Math.max(0, parseInt(valores[p.id], 10) || 0) })),
+    })
+    setGuardando(false)
+    if (error) return avisar('error', mensajeError(error))
+    avisar('ok', `Inventario actualizado: ${data} productos.`)
+    onGuardado()
+  }
+
+  return (
+    <Hoja titulo="📋 Conteo de inventario" onCerrar={onCerrar}>
+      <p className="mb-2 text-sm text-slate-500">Escribe cuántos hay de cada producto. Solo se guardan los que cambian.</p>
+      <input className="input mb-3" type="search" placeholder="Buscar producto" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+      <div className="space-y-4">
+        {grupos.map(({ c, ps }) => {
+          const lista = ps.filter((p) => !q || sinAcentos(p.nombre).includes(q))
+          if (!lista.length) return null
+          return (
+            <section key={c.id}>
+              <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">{c.emoji} {c.nombre}</h4>
+              <ul className="divide-y divide-slate-100">
+                {lista.map((p) => {
+                  const cambio = valores[p.id] !== '' && Number(valores[p.id]) !== p.stock
+                  return (
+                    <li key={p.id} className="flex items-center justify-between gap-2 py-1.5">
+                      <span className="min-w-0 truncate text-sm text-slate-800">{p.nombre}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        {cambio && <span className="text-xs text-slate-400 line-through">{p.stock}</span>}
+                        <input type="number" inputMode="numeric" min="0" max="9999" aria-label={`Cantidad de ${p.nombre}`}
+                          className={`w-16 rounded-lg border px-2 py-1 text-right text-sm font-bold tabular-nums ${
+                            cambio ? 'border-marca bg-marca-claro text-marca-texto' : 'border-slate-300 bg-superficie text-slate-900'}`}
+                          value={valores[p.id]} onFocus={(e) => e.target.select()}
+                          onChange={(e) => setValores((v) => ({ ...v, [p.id]: e.target.value.replace(/\D/g, '').slice(0, 4) }))} />
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )
+        })}
+      </div>
+      <div className="sticky bottom-0 -mx-5 mt-4 bg-superficie px-5 pt-3">
+        <button onClick={guardar} disabled={guardando} className="btn-primario w-full">
+          {guardando ? 'Guardando…' : cambios.length ? `Guardar ${cambios.length} cambios` : 'Sin cambios'}
+        </button>
+      </div>
+    </Hoja>
+  )
+}
+
+// Cambiar costo, precio, categoría o visibilidad de varios productos a la vez
+function EdicionLote({ ids, categorias, avisar, onCerrar, onGuardado }) {
+  const [f, setF] = useState({ costo: '', precio: '', categoria_id: '', activo: '' })
+  const [guardando, setGuardando] = useState(false)
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+
+  async function guardar(e) {
+    e.preventDefault()
+    const cambios = {}
+    if (f.costo !== '') cambios.costo = Number(f.costo)
+    if (f.precio !== '') cambios.precio = Number(f.precio)
+    if (f.categoria_id !== '') cambios.categoria_id = f.categoria_id === 'ninguna' ? null : Number(f.categoria_id)
+    if (f.activo !== '') cambios.activo = f.activo === 'si'
+    if (!Object.keys(cambios).length) return avisar('error', 'Elige al menos un cambio.')
+    if ((cambios.costo ?? 0) < 0 || (cambios.precio ?? 0) < 0) return avisar('error', 'Los montos no pueden ser negativos.')
+    if (!confirm(`¿Aplicar a ${ids.length} productos?`)) return
+    setGuardando(true)
+    const { error } = await supabase.from('productos').update(cambios).in('id', ids)
+    setGuardando(false)
+    if (error) return avisar('error', mensajeError(error))
+    avisar('ok', `${ids.length} productos actualizados.`)
+    onGuardado()
+  }
+
+  return (
+    <Hoja titulo={`Cambiar ${ids.length} productos`} onCerrar={onCerrar}>
+      <form onSubmit={guardar} className="space-y-3">
+        <p className="text-sm text-slate-500">Deja en blanco lo que no quieras cambiar.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="etiqueta" htmlFor="lcosto">Costo ($)</label>
+            <input id="lcosto" className="input" type="number" inputMode="decimal" step="0.01" min="0" value={f.costo} onChange={set('costo')} />
+          </div>
+          <div>
+            <label className="etiqueta" htmlFor="lprecio">Precio ($)</label>
+            <input id="lprecio" className="input" type="number" inputMode="decimal" step="0.01" min="0" value={f.precio} onChange={set('precio')} />
+          </div>
+        </div>
+        <div>
+          <label className="etiqueta" htmlFor="lcat">Categoría</label>
+          <select id="lcat" className="input" value={f.categoria_id} onChange={set('categoria_id')}>
+            <option value="">— Sin cambiar —</option>
+            {categorias.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nombre}</option>)}
+            <option value="ninguna">Sin categoría</option>
+          </select>
+        </div>
+        <div>
+          <label className="etiqueta" htmlFor="lact">Visible en el menú</label>
+          <select id="lact" className="input" value={f.activo} onChange={set('activo')}>
+            <option value="">— Sin cambiar —</option>
+            <option value="si">Sí, visible</option>
+            <option value="no">No, ocultar</option>
+          </select>
+        </div>
+        <button disabled={guardando} className="btn-primario w-full">{guardando ? 'Guardando…' : 'Aplicar cambios'}</button>
+      </form>
+    </Hoja>
   )
 }
 
@@ -279,6 +467,7 @@ function FormInventario({ producto, avisar, onCerrar, onGuardado }) {
 
 function Categorias({ categorias, avisar, onCerrar, onCambio }) {
   const [nombre, setNombre] = useState('')
+  const [eligiendo, setEligiendo] = useState(null)
 
   async function agregar(e) {
     e.preventDefault()
@@ -293,6 +482,13 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
   async function alternar(c) {
     const { error } = await supabase.from('categorias').update({ activo: !c.activo }).eq('id', c.id)
     if (error) return avisar('error', mensajeError(error))
+    onCambio()
+  }
+
+  async function cambiarEmoji(c, emoji) {
+    const { error } = await supabase.from('categorias').update({ emoji }).eq('id', c.id)
+    if (error) return avisar('error', mensajeError(error))
+    setEligiendo(null)
     onCambio()
   }
 
@@ -314,14 +510,28 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
       {categorias.length === 0 ? <Vacio>Sin categorías todavía.</Vacio> : (
         <ul className="divide-y divide-slate-100">
           {categorias.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 py-2">
-              <span className={c.activo ? '' : 'text-slate-400 line-through'}>{c.nombre}</span>
+            <li key={c.id} className="py-2">
+              <div className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <button onClick={() => setEligiendo(eligiendo === c.id ? null : c.id)} aria-label="Cambiar emoji"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-xl">{c.emoji}</button>
+                <span className={c.activo ? 'text-slate-900' : 'text-slate-400 line-through'}>{c.nombre}</span>
+              </span>
               <div className="flex gap-2">
                 <button onClick={() => renombrar(c)} className="text-sm font-semibold text-marca-texto">Renombrar</button>
                 <button onClick={() => alternar(c)} className="text-sm font-semibold text-slate-500">
                   {c.activo ? 'Ocultar' : 'Mostrar'}
                 </button>
               </div>
+              </div>
+              {eligiendo === c.id && (
+                <div className="animar-entrada mt-2 grid grid-cols-8 gap-1">
+                  {EMOJIS_CAT.map((em) => (
+                    <button key={em} onClick={() => cambiarEmoji(c, em)}
+                      className={`aspect-square rounded-lg text-xl ${c.emoji === em ? 'bg-marca-claro ring-2 ring-marca' : 'bg-slate-100'}`}>{em}</button>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>

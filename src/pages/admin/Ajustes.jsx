@@ -6,6 +6,9 @@ import { aplicarColor, PALETAS } from '../../lib/tema'
 import { borrarFoto, subirFoto } from '../../lib/fotos'
 import { Cargando, Interruptor } from '../../components/ui'
 
+const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
+const horaTxt = (h) => (h === 24 ? '12:00 a. m. (medianoche)' : `${h % 12 || 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`)
+
 const EMOJIS = ['🍿', '🛒', '🍬', '🍫', '🥤', '🍪', '🧁', '🍭', '☕', '🏪', '⭐', '🌙']
 
 export default function Ajustes({ avisar }) {
@@ -64,6 +67,17 @@ export default function Ajustes({ avisar }) {
         mostrar_deudas: f.mostrar_deudas,
         minutos_borrar: Math.min(60, Math.max(0, parseInt(f.minutos_borrar, 10) || 0)),
         recordatorio_activo: f.recordatorio_activo,
+        recordatorio_dia: Number(f.recordatorio_dia),
+        recordatorio_hora: Number(f.recordatorio_hora),
+        registro: f.registro,
+        horario_modo: f.horario_modo,
+        tienda_abierta: f.tienda_abierta,
+        hora_apertura: Number(f.hora_apertura),
+        hora_cierre: Number(f.hora_cierre),
+        dias_abierta: f.dias_abierta,
+        mensaje_cerrado: f.mensaje_cerrado.trim() || 'La tienda está cerrada por ahora.',
+        limite_deuda: f.limite_deuda === '' || f.limite_deuda === null ? null : Math.max(0, Number(f.limite_deuda)),
+        limite_bloquea: f.limite_bloquea,
         recordatorio_minimo: Math.max(0, Number(f.recordatorio_minimo) || 0),
         notificar_stock: f.notificar_stock,
         stock_bajo_umbral: Math.min(50, Math.max(0, parseInt(f.stock_bajo_umbral, 10) || 0)),
@@ -205,6 +219,92 @@ export default function Ajustes({ avisar }) {
           <input id="amin" className="input" type="number" min="0" max="60" value={f.minutos_borrar}
             onChange={(e) => set('minutos_borrar', e.target.value)} />
         </div>
+        <div>
+          <label className="etiqueta" htmlFor="alim">Límite de deuda general ($)</label>
+          <input id="alim" className="input" type="number" inputMode="decimal" step="0.5" min="0" placeholder="Sin límite"
+            value={f.limite_deuda ?? ''} onChange={(e) => set('limite_deuda', e.target.value)} />
+          <p className="mt-1 text-xs text-slate-500">Vacío = sin límite. Puedes poner uno distinto a cada persona en Usuarios.</p>
+        </div>
+        {Number(f.limite_deuda) > 0 && (
+          <div className="animar-entrada">
+            <Interruptor activo={f.limite_bloquea} onCambio={(v) => set('limite_bloquea', v)}
+              etiqueta="Bloquear al pasar el límite"
+              ayuda={f.limite_bloquea ? 'No podrán registrar a cuenta hasta pagar (sí pueden marcar “Ya pagué”).' : 'Solo se les muestra un aviso.'} />
+          </div>
+        )}
+      </section>
+
+      {/* ---------- Registro ---------- */}
+      <section className="tarjeta space-y-3">
+        <h3 className="font-bold text-slate-900">👤 Registro de cuentas</h3>
+        <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
+          {[['abierto', '🟢 Abierto'], ['aprobacion', '🟡 Con aprobación'], ['cerrado', '🔴 Cerrado']].map(([k, t]) => (
+            <button key={k} type="button" onClick={() => set('registro', k)}
+              className={`rounded-xl px-1 py-2.5 transition ${f.registro === k ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-600'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">
+          {f.registro === 'abierto' && 'Cualquiera con el enlace puede crear su cuenta y comprar.'}
+          {f.registro === 'aprobacion' && `Pueden crear su cuenta, pero no compran hasta que ${f.nombre_encargada || 'Karla'} la apruebe en Usuarios.`}
+          {f.registro === 'cerrado' && `Solo ${f.nombre_encargada || 'Karla'} crea cuentas, desde Usuarios → Crear cuenta.`}
+        </p>
+      </section>
+
+      {/* ---------- Horario ---------- */}
+      <section className="tarjeta space-y-3">
+        <h3 className="font-bold text-slate-900">🕐 Horario de la tienda</h3>
+        <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
+          {[['siempre', 'Siempre abierta'], ['manual', 'Abrir/cerrar a mano'], ['horario', 'Por horario']].map(([k, t]) => (
+            <button key={k} type="button" onClick={() => set('horario_modo', k)}
+              className={`rounded-xl px-1 py-2.5 transition ${f.horario_modo === k ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-600'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        {f.horario_modo === 'manual' && (
+          <div className="animar-entrada">
+            <Interruptor activo={f.tienda_abierta} onCambio={(v) => set('tienda_abierta', v)}
+              etiqueta={f.tienda_abierta ? '🟢 Tienda abierta' : '🔴 Tienda cerrada'} />
+          </div>
+        )}
+        {f.horario_modo === 'horario' && (
+          <div className="animar-entrada space-y-3">
+            <div className="grid grid-cols-7 gap-1">
+              {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((d, i) => {
+                const activo = f.dias_abierta.includes(i)
+                return (
+                  <button key={i} type="button" aria-pressed={activo}
+                    onClick={() => set('dias_abierta', activo ? f.dias_abierta.filter((x) => x !== i) : [...f.dias_abierta, i].sort())}
+                    className={`aspect-square rounded-lg text-sm font-bold ${activo ? 'bg-marca text-sobre-marca' : 'bg-slate-100 text-slate-500'}`}>
+                    {d}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="etiqueta" htmlFor="aabre">Abre</label>
+                <select id="aabre" className="input" value={f.hora_apertura} onChange={(e) => set('hora_apertura', Number(e.target.value))}>
+                  {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{horaTxt(h)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="etiqueta" htmlFor="acierra">Cierra</label>
+                <select id="acierra" className="input" value={f.hora_cierre} onChange={(e) => set('hora_cierre', Number(e.target.value))}>
+                  {Array.from({ length: 24 }, (_, h) => h + 1).map((h) => <option key={h} value={h}>{horaTxt(h)}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+        {f.horario_modo !== 'siempre' && (
+          <div className="animar-entrada">
+            <label className="etiqueta" htmlFor="amsj">Mensaje cuando está cerrada</label>
+            <input id="amsj" className="input" maxLength={120} value={f.mensaje_cerrado} onChange={(e) => set('mensaje_cerrado', e.target.value)} />
+          </div>
+        )}
       </section>
 
       {/* ---------- Notificaciones ---------- */}
@@ -212,7 +312,23 @@ export default function Ajustes({ avisar }) {
         <h3 className="font-bold text-slate-900">🔔 Notificaciones</h3>
         <Interruptor activo={f.recordatorio_activo} onCambio={(v) => set('recordatorio_activo', v)}
           etiqueta="Recordatorio semanal de saldo"
-          ayuda="Los viernes a las 3:00 p. m., a quienes deban y tengan los avisos activados." />
+          ayuda={`Los ${DIAS[f.recordatorio_dia]} a las ${horaTxt(f.recordatorio_hora)}, a quienes deban y tengan los avisos activados.`} />
+        {f.recordatorio_activo && (
+          <div className="animar-entrada grid grid-cols-2 gap-2">
+            <div>
+              <label className="etiqueta" htmlFor="arecdia">Día</label>
+              <select id="arecdia" className="input" value={f.recordatorio_dia} onChange={(e) => set('recordatorio_dia', Number(e.target.value))}>
+                {DIAS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="etiqueta" htmlFor="arechora">Hora</label>
+              <select id="arechora" className="input" value={f.recordatorio_hora} onChange={(e) => set('recordatorio_hora', Number(e.target.value))}>
+                {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{horaTxt(h)}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
         {f.recordatorio_activo && (
           <div className="animar-entrada">
             <label className="etiqueta" htmlFor="arecmin">Solo si deben al menos ($)</label>

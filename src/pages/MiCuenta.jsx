@@ -232,7 +232,7 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
 }
 
 function MiPerfil({ avisar, onCerrar, onTutorial }) {
-  const { perfil, recargarPerfil } = useAuth()
+  const { perfil, recargarPerfil, salir } = useAuth()
   const encargada = useEncargada()
   const [nombre, setNombre] = useState(perfil.nombre)
   const [telefono, setTelefono] = useState(perfil.telefono ?? '')
@@ -384,6 +384,10 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
 
         <button type="button" onClick={onTutorial} className="w-full py-2 text-sm font-semibold text-marca-texto">
           🎓 Ver el tutorial otra vez
+        </button>
+        <button type="button" onClick={() => confirm('¿Cerrar sesión en este dispositivo?') && salir()}
+          className="btn-secundario w-full text-red-600">
+          Cerrar sesión
         </button>
       </div>
     </Hoja>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { dinero, mensajeError } from '../../lib/format'
 import { Cargando, Vacio } from '../../components/ui'
+import { descargarCSV, fechaCSV } from '../../lib/csv'
 
 // Fecha de hoy en El Salvador, como YYYY-MM-DD
 const hoySV = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador' }).format(new Date())
@@ -53,7 +54,7 @@ export default function Estadisticas({ avisar }) {
       {cargando && !datos ? <Cargando /> : datos && (
         <div className={`space-y-4 ${cargando ? 'opacity-60' : ''}`}>
           <div className="grid grid-cols-2 gap-3">
-            <Dato titulo="Ventas" valor={dinero(datos.ventas)} sub={`${datos.compras} compras · ${datos.unidades} u.`} />
+            <Dato titulo="Ventas" valor={dinero(datos.ventas)} sub={`${datos.compras} compras · ${datos.unidades} u.${Number(datos.descuentos) > 0 ? ` · −${dinero(datos.descuentos)} promos` : ''}`} />
             <Dato titulo="Ganancia" valor={dinero(datos.ganancia)}
               sub={Number(datos.ventas) > 0 ? `${Math.round((datos.ganancia / datos.ventas) * 100)}% de margen` : 'Sin ventas'} />
             <Dato titulo="Cobrado" valor={dinero(datos.cobrado)} sub="Pagos menos devoluciones" />
@@ -103,9 +104,61 @@ export default function Estadisticas({ avisar }) {
               </ul>
             )}
           </section>
+
+          <Exportar desde={desde} hasta={hasta} avisar={avisar} />
         </div>
       )}
     </div>
+  )
+}
+
+function Exportar({ desde, hasta, avisar }) {
+  const [ocupado, setOcupado] = useState(null)
+  const ejecutar = async (clave, fn) => {
+    setOcupado(clave)
+    try { await fn() } catch (e) { avisar('error', mensajeError(e)) } finally { setOcupado(null) }
+  }
+  const ini = new Date(`${desde}T00:00:00-06:00`).toISOString()
+  const fin = new Date(new Date(`${hasta}T00:00:00-06:00`).getTime() + 864e5).toISOString()
+
+  const ventas = () => ejecutar('ventas', async () => {
+    const { data, error } = await supabase.from('compras')
+      .select('created_at, total, descuento, anulada, perfiles!compras_usuario_id_fkey(nombre), compra_items(cantidad, precio_unitario, costo_unitario, productos(nombre))')
+      .gte('created_at', ini).lt('created_at', fin).order('created_at')
+    if (error) throw error
+    const filas = data.flatMap((c) => c.compra_items.map((i) => [
+      fechaCSV(c.created_at), c.perfiles?.nombre ?? '', i.productos?.nombre ?? '', i.cantidad,
+      Number(i.precio_unitario).toFixed(2), (i.cantidad * i.precio_unitario).toFixed(2),
+      (i.cantidad * i.costo_unitario).toFixed(2), Number(c.descuento).toFixed(2), c.anulada ? 'Sí' : 'No',
+    ]))
+    await descargarCSV(`ventas_${desde}_${hasta}.csv`,
+      ['Fecha', 'Cliente', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Costo', 'Descuento de la compra', 'Anulada'], filas)
+  })
+  const deudas = () => ejecutar('deudas', async () => {
+    const { data, error } = await supabase.rpc('obtener_saldos')
+    if (error) throw error
+    await descargarCSV(`saldos_${hasta}.csv`, ['Nombre', 'Usuario', 'Saldo (+debe / −a favor)'],
+      data.map((s) => [s.nombre, s.usuario, Number(s.saldo).toFixed(2)]))
+  })
+  const inventario = () => ejecutar('inventario', async () => {
+    const { data, error } = await supabase.from('productos')
+      .select('nombre, precio, costo, stock, agotado, activo, categorias(nombre)').order('nombre')
+    if (error) throw error
+    await descargarCSV(`inventario_${hasta}.csv`, ['Producto', 'Categoría', 'Precio', 'Costo', 'Stock', 'Agotado', 'Visible'],
+      data.map((p) => [p.nombre, p.categorias?.nombre ?? '', Number(p.precio).toFixed(2), Number(p.costo).toFixed(2),
+        p.stock, p.agotado ? 'Sí' : 'No', p.activo ? 'Sí' : 'No']))
+  })
+
+  return (
+    <section className="tarjeta">
+      <h3 className="mb-1 font-semibold text-slate-800">⬇️ Exportar a Excel</h3>
+      <p className="mb-3 text-xs text-slate-500">Archivos CSV que abren en Excel o Google Sheets.</p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <button onClick={ventas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'ventas' ? 'Preparando…' : '🛒 Ventas del período'}</button>
+        <button onClick={deudas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'deudas' ? 'Preparando…' : '💵 Saldos de todos'}</button>
+        <button onClick={inventario} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'inventario' ? 'Preparando…' : '📦 Inventario actual'}</button>
+      </div>
+    </section>
   )
 }
 

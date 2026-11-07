@@ -34,6 +34,9 @@ export default function ListaCompras({ compras, accion }) {
               <div className="shrink-0 text-right">
                 <p className={`font-bold text-slate-900 ${c.anulada ? 'line-through' : ''}`}>{dinero(c.total)}</p>
                 {c.anulada && <p className="text-xs font-semibold text-slate-500">Anulada</p>}
+                {!c.anulada && Number(c.descuento) > 0 && (
+                  <p className="text-xs font-semibold text-orange-600">🔥 −{dinero(c.descuento)}</p>
+                )}
               </div>
             </div>
             {estado && (
@@ -93,6 +96,6 @@ export function FormaDePago({ metodo, setMetodo, referencia, setReferencia }) {
 }
 
 export const SELECT_COMPRAS =
-  'id, total, anulada, created_at, compra_items(cantidad, precio_unitario, productos(nombre)), reportes_pago(estado)'
+  'id, total, descuento, anulada, created_at, compra_items(cantidad, precio_unitario, productos(nombre)), reportes_pago(estado)'
 export const SELECT_PAGOS = 'id, tipo, monto, metodo, referencia, created_at'
 export const SELECT_REPORTES = 'id, monto, metodo, referencia, estado, compra_id, nota_revision, created_at, revisado_at'

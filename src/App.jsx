@@ -77,6 +77,20 @@ export default function App() {
   }
   if (!session) return <Login />
 
+  if (perfil && !perfil.aprobado) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <Logo className="animar-pop h-16 w-16 text-5xl" />
+        <h2 className="text-xl font-bold text-slate-900">¡Listo, {perfil.nombre.split(' ')[0]}!</h2>
+        <p className="text-slate-600">
+          Tu cuenta espera la aprobación de {apariencia.nombre_encargada}. Cuando te apruebe, vuelve a abrir la app.
+        </p>
+        <button onClick={() => recargarPerfil()} className="btn-primario">Ya me aprobaron</button>
+        <button onClick={salir} className="text-sm font-semibold text-slate-500">Cerrar sesión</button>
+      </div>
+    )
+  }
+
   if (!perfil || !perfil.activo) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
@@ -115,14 +129,11 @@ export default function App() {
           <Logo className="h-8 w-8 text-2xl" />
           <span className="truncate">{apariencia.nombre_tienda}</span>
         </h1>
-        <button onClick={() => confirm('¿Cerrar sesión en este dispositivo?') && salir()}
-          className="text-sm font-medium text-slate-500">
-          Salir
-        </button>
+
       </header>
 
       <main key={vista} className="animar-entrada px-4">
-        {vista === 'menu' && <Menu avisar={avisar} onCompra={refrescarSaldo} />}
+        {vista === 'menu' && <Menu avisar={avisar} onCompra={refrescarSaldo} saldo={saldo} />}
         {vista === 'cuenta' && <MiCuenta avisar={avisar} onCambio={refrescarSaldo} onTutorial={() => setTutorial(true)} />}
         {vista === 'admin' && esPersonal(perfil) && (
           <Suspense fallback={<Cargando />}><Admin avisar={avisar} pendientes={pendientes} onPendientes={setPendientes} /></Suspense>

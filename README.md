@@ -38,5 +38,5 @@ plan gratis no pause el proyecto.
 ## Base de datos
 
 El esquema, las reglas de seguridad (RLS) y las funciones viven en Supabase
-(migraciones `fase1_*`, `fase2_fotos_y_estadisticas`, `fase3_apariencia_perfil_notificaciones`).
+(migraciones `fase1_*` a `fase6_promos_horario_limites_caja`).
 La llave secreta de Supabase nunca va en este repo.

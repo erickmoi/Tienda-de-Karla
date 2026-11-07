@@ -4,6 +4,7 @@ import { useAuth } from '../../lib/auth'
 import { fecha, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { invocar, pinAleatorio } from '../../lib/funciones'
+import { useApariencia } from '../../lib/apariencia'
 
 const ROLES = {
   superadmin: 'Superadmin',
@@ -33,7 +34,7 @@ export default function Usuarios({ avisar }) {
   const cargar = useCallback(async () => {
     const { data, error } = await supabase
       .from('perfiles')
-      .select('id, usuario, nombre, rol, permisos, activo, created_at')
+      .select('id, usuario, nombre, rol, permisos, activo, aprobado, limite_deuda, created_at')
       .order('nombre')
     if (error) return avisar('error', mensajeError(error))
     setUsuarios(data)
@@ -45,11 +46,25 @@ export default function Usuarios({ avisar }) {
     const q = busqueda.trim().toLowerCase()
     const orden = { superadmin: 0, admin: 1, colaborador: 2, cliente: 3 }
     return (usuarios ?? [])
+      .filter((u) => u.aprobado)
       .filter((u) => !q || u.nombre.toLowerCase().includes(q) || u.usuario.includes(q))
       .sort((a, b) => orden[a.rol] - orden[b.rol] || a.nombre.localeCompare(b.nombre))
   }, [usuarios, busqueda])
 
   if (!usuarios) return <Cargando />
+  const porAprobar = usuarios.filter((u) => !u.aprobado)
+
+  async function aprobar(u, si) {
+    if (!si && !confirm(`¿Rechazar la cuenta de ${u.nombre}? No podrá entrar.`)) return
+    if (si) {
+      const { error } = await supabase.rpc('cambiar_estado_usuario', { p_usuario_id: u.id, p_activo: true })
+      if (error) return avisar('error', mensajeError(error))
+      avisar('ok', `${u.nombre.split(' ')[0]} ya puede comprar.`)
+    } else {
+      avisar('ok', 'Cuenta rechazada. Seguirá sin acceso.')
+    }
+    cargar()
+  }
 
   return (
     <div className="space-y-4">
@@ -57,6 +72,26 @@ export default function Usuarios({ avisar }) {
         <p className="text-sm text-slate-500">{usuarios.length} cuentas registradas</p>
         <button onClick={() => setCreando(true)} className="btn-primario py-2 text-sm">+ Crear cuenta</button>
       </div>
+      {porAprobar.length > 0 && (
+        <section className="animar-entrada rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+          <h3 className="mb-2 font-bold text-amber-800">👤 Cuentas por aprobar ({porAprobar.length})</h3>
+          <ul className="space-y-2">
+            {porAprobar.map((u) => (
+              <li key={u.id} className="tarjeta flex items-center justify-between gap-2 p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">{u.nombre}</p>
+                  <p className="text-xs text-slate-500">@{u.usuario} · {fecha(u.created_at)}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button onClick={() => aprobar(u, false)} className="btn-peligro px-3 py-1.5 text-sm">✕</button>
+                  <button onClick={() => aprobar(u, true)} className="btn bg-emerald-600 px-3 py-1.5 text-sm text-white">✓ Aprobar</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <input className="input" placeholder="Buscar por nombre o usuario" value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)} />
       {lista.length === 0 ? <Vacio>Nadie coincide.</Vacio> : (
@@ -258,6 +293,8 @@ function EditarUsuario({ usuario, yo, avisar, onCerrar, onCambio }) {
 
       {puedeResetear && <RestablecerPin usuario={usuario} avisar={avisar} />}
 
+      <LimiteDeuda usuario={usuario} avisar={avisar} onCambio={onCambio} />
+
       {puedeCambiarRol && (
         <div className="mb-5 space-y-3">
           <label className="etiqueta" htmlFor="urol">Rol</label>
@@ -296,5 +333,37 @@ function EditarUsuario({ usuario, yo, avisar, onCerrar, onCambio }) {
         Una cuenta desactivada no puede entrar ni registrar compras. Su historial se conserva.
       </p>
     </Hoja>
+  )
+}
+
+function LimiteDeuda({ usuario, avisar, onCambio }) {
+  const { apariencia } = useApariencia()
+  const [valor, setValor] = useState(usuario.limite_deuda ?? '')
+  const [guardando, setGuardando] = useState(false)
+  const general = apariencia.limite_deuda
+
+  async function guardar() {
+    setGuardando(true)
+    const { error } = await supabase.rpc('asignar_limite', {
+      p_usuario_id: usuario.id, p_limite: valor === '' ? null : Number(valor),
+    })
+    setGuardando(false)
+    if (error) return avisar('error', mensajeError(error))
+    avisar('ok', valor === '' ? 'Usa el límite general.' : `Límite de ${usuario.nombre.split(' ')[0]}: $${Number(valor).toFixed(2)}.`)
+    onCambio()
+  }
+
+  return (
+    <section className="mb-5 rounded-2xl bg-slate-50 p-3">
+      <p className="mb-1 text-sm font-medium text-slate-600">💳 Límite de deuda propio</p>
+      <p className="mb-2 text-xs text-slate-500">
+        Vacío = usa el general ({general ? `$${Number(general).toFixed(2)}` : 'sin límite'}). Escribe 0 para quitarle el límite.
+      </p>
+      <div className="flex gap-2">
+        <input className="input" type="number" inputMode="decimal" step="0.5" min="0" placeholder="General"
+          value={valor} onChange={(e) => setValor(e.target.value)} />
+        <button onClick={guardar} disabled={guardando} className="btn-primario shrink-0 text-sm">Guardar</button>
+      </div>
+    </section>
   )
 }
