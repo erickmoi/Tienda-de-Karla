@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { supabase } from './supabase'
 import { aplicarModo } from './tema'
 import { desactivarPush } from './push'
+import { olvidarActividadAdmin } from './acceso'
 
 const AuthContext = createContext(null)
 
@@ -43,7 +44,17 @@ export function AuthProvider({ children }) {
 
   const salir = async () => {
     await desactivarPush().catch(() => {})
+    olvidarActividadAdmin()
     await supabase.auth.signOut()
+  }
+
+  // Cierra la sesión en todos los dispositivos y apaga los avisos en todos ellos
+  const salirDeTodo = async () => {
+    await desactivarPush().catch(() => {})
+    if (session?.user) await supabase.from('push_suscripciones').delete().eq('usuario_id', session.user.id)
+    olvidarActividadAdmin()
+    const { error } = await supabase.auth.signOut({ scope: 'global' })
+    if (error) await supabase.auth.signOut({ scope: 'local' })
   }
 
   return (
@@ -55,6 +66,7 @@ export function AuthProvider({ children }) {
         cargando: session === undefined || (cargandoPerfil && !perfil),
         recargarPerfil: cargarPerfil,
         salir,
+        salirDeTodo,
       }}
     >
       {children}

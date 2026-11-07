@@ -21,6 +21,7 @@ const ICONOS = {
   pago_automatico: '⚡',
   asignar_limite: '💳',
   conteo_inventario: '📋',
+  cuenta_banco: '🏦',
 }
 
 const ROLES = { superadmin: 'superadmin', admin: 'administración', colaborador: 'colaborador', cliente: 'cliente' }
@@ -67,6 +68,8 @@ function describir(e, nombres) {
       return `${quien(d.cliente_id)} registró un pago de ${dinero(d.monto)} (${d.metodo}), aplicado automáticamente`
     case 'rechazar_pago':
       return `Rechazó un pago de ${dinero(d.monto)} de ${quien(d.cliente_id)}${d.nota ? ` (${d.nota})` : ''}`
+    case 'cuenta_banco':
+      return `${d.cambio?.charAt(0).toUpperCase()}${d.cambio?.slice(1)}`
     case 'recordar_cobro':
       return `Recordó a ${quien(d.usuario_id)} su saldo de ${dinero(d.saldo)}`
     default:

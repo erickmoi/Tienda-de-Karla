@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { supabase, emailDe, normalizarUsuario } from '../lib/supabase'
 import { mensajeError } from '../lib/format'
 import { Logo, useApariencia } from '../lib/apariencia'
+import { entrarConClave, marcarActividadAdmin } from '../lib/acceso'
+import CampoClave, { claveValida } from '../components/CampoClave'
 
 export default function Login() {
   const { apariencia } = useApariencia()
@@ -13,30 +15,31 @@ export default function Login() {
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
-  const soloDigitos = (v) => v.replace(/\D/g, '').slice(0, 6)
-
   async function enviar(e) {
     e.preventDefault()
     setError('')
     const u = normalizarUsuario(usuario)
     if (!/^[a-z0-9._]{3,30}$/.test(u))
       return setError('El usuario debe tener de 3 a 30 letras, números, punto o guion bajo (sin espacios).')
-    if (!/^\d{6}$/.test(pin)) return setError('El PIN debe tener 6 dígitos.')
+    if (modo === 'crear') {
+      const problema = claveValida(pin)
+      if (problema) return setError(problema)
+    } else if (pin.length < 6) return setError('Escribe tu PIN o contraseña completo.')
 
     setEnviando(true)
     try {
       if (modo === 'crear') {
         if (!nombre.trim()) throw new Error('Escribe tu nombre.')
-        if (pin !== pin2) throw new Error('Los PIN no coinciden.')
+        if (pin !== pin2) throw new Error('No coinciden. Escríbelo igual las dos veces.')
         const { error } = await supabase.auth.signUp({
           email: emailDe(u),
           password: pin,
           options: { data: { usuario: u, nombre: nombre.trim() } },
         })
         if (error) throw error
+        marcarActividadAdmin()
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: emailDe(u), password: pin })
-        if (error) throw error
+        await entrarConClave(u, pin)
       }
     } catch (err) {
       setError(mensajeError(err))
@@ -80,16 +83,15 @@ export default function Login() {
             </div>
           )}
           <div>
-            <label className="etiqueta" htmlFor="pin">PIN de 6 dígitos</label>
-            <input id="pin" className="input tracking-[0.5em]" type="password" inputMode="numeric"
-              autoComplete={modo === 'crear' ? 'new-password' : 'current-password'}
-              value={pin} onChange={(e) => setPin(soloDigitos(e.target.value))} />
+            <label className="etiqueta" htmlFor="pin">{modo === 'crear' ? 'PIN de 6 números (o contraseña)' : 'PIN o contraseña'}</label>
+            <CampoClave id="pin" autoComplete={modo === 'crear' ? 'new-password' : 'current-password'}
+              value={pin} onChange={setPin} />
+            <p className="mt-1 text-xs text-slate-500">Toca <b>ABC</b> para escribir letras.</p>
           </div>
           {modo === 'crear' && (
             <div>
-              <label className="etiqueta" htmlFor="pin2">Repite el PIN</label>
-              <input id="pin2" className="input tracking-[0.5em]" type="password" inputMode="numeric"
-                autoComplete="new-password" value={pin2} onChange={(e) => setPin2(soloDigitos(e.target.value))} />
+              <label className="etiqueta" htmlFor="pin2">Repítelo</label>
+              <CampoClave id="pin2" autoComplete="new-password" value={pin2} onChange={setPin2} />
             </div>
           )}
 

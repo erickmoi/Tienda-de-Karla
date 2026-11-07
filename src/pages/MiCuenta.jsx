@@ -1,3 +1,4 @@
+import CampoClave, { claveValida } from '../components/CampoClave'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
@@ -259,7 +260,7 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
 }
 
 function MiPerfil({ avisar, onCerrar, onTutorial }) {
-  const { perfil, recargarPerfil, salir } = useAuth()
+  const { perfil, recargarPerfil, salir, salirDeTodo } = useAuth()
   const encargada = useEncargada()
   const [nombre, setNombre] = useState(perfil.nombre)
   const [telefono, setTelefono] = useState(perfil.telefono ?? '')
@@ -296,18 +297,19 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
 
   async function cambiarPin(e) {
     e.preventDefault()
-    if (!/^\d{6}$/.test(pin)) return avisar('error', 'El PIN debe tener 6 dígitos.')
-    if (pin !== pin2) return avisar('error', 'Los PIN no coinciden.')
+    const problema = claveValida(pin)
+    if (problema) return avisar('error', problema)
+    if (pin !== pin2) return avisar('error', 'No coinciden. Escríbelo igual las dos veces.')
     setOcupado(true)
     const { error } = await supabase.auth.updateUser({ password: pin })
     setOcupado(false)
     if (error) {
       const igual = /different|same/i.test(error.message)
-      return avisar('error', igual ? 'El PIN nuevo debe ser distinto al actual.' : mensajeError(error))
+      return avisar('error', igual ? 'Debe ser distinto al actual.' : mensajeError(error))
     }
     setPin('')
     setPin2('')
-    avisar('ok', 'PIN actualizado.')
+    avisar('ok', 'Listo, ya quedó cambiado.')
   }
 
   async function alternarPush(activar) {
@@ -406,14 +408,11 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
         )}
 
         <form onSubmit={cambiarPin} className="space-y-3">
-          <p className="etiqueta">Cambiar mi PIN</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input className="input tracking-[0.3em]" type="password" inputMode="numeric" autoComplete="new-password"
-              placeholder="Nuevo" value={pin} onChange={(e) => setPin(digitos(e.target.value, 6))} />
-            <input className="input tracking-[0.3em]" type="password" inputMode="numeric" autoComplete="new-password"
-              placeholder="Repetir" value={pin2} onChange={(e) => setPin2(digitos(e.target.value, 6))} />
-          </div>
-          <button disabled={ocupado || pin.length < 6} className="btn-secundario w-full">Cambiar PIN</button>
+          <p className="etiqueta">Cambiar mi PIN o contraseña</p>
+          <CampoClave autoComplete="new-password" placeholder="Nuevo" value={pin} onChange={setPin} />
+          <CampoClave autoComplete="new-password" placeholder="Repetir" value={pin2} onChange={setPin2} />
+          <p className="text-xs text-slate-500">6 números, o una contraseña con letras (toca <b>ABC</b>). Para administración se recomienda contraseña.</p>
+          <button disabled={ocupado || pin.length < 6} className="btn-secundario w-full">Cambiar</button>
         </form>
 
         <button type="button" onClick={onTutorial} className="w-full py-2 text-sm font-semibold text-marca-texto">
@@ -422,6 +421,11 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
         <button type="button" onClick={() => confirm('¿Cerrar sesión en este dispositivo?') && salir()}
           className="btn-secundario w-full text-red-600">
           Cerrar sesión
+        </button>
+        <button type="button"
+          onClick={() => confirm('¿Cerrar sesión en TODOS tus dispositivos? Úsalo si perdiste o cambiaste de celular. Tendrás que volver a entrar en cada uno.') && salirDeTodo()}
+          className="w-full py-1 text-xs font-semibold text-red-600">
+          🔐 Cerrar sesión en todos mis dispositivos
         </button>
       </div>
     </Hoja>

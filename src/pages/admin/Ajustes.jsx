@@ -68,6 +68,7 @@ export default function Ajustes({ avisar }) {
         mostrar_deudas: f.mostrar_deudas,
         minutos_borrar: Math.min(60, Math.max(0, parseInt(f.minutos_borrar, 10) || 0)),
         recordatorio_activo: f.recordatorio_activo,
+        recordatorio_quincena: f.recordatorio_quincena,
         recordatorio_dia: Number(f.recordatorio_dia),
         recordatorio_hora: Number(f.recordatorio_hora),
         registro: f.registro,
@@ -332,7 +333,10 @@ export default function Ajustes({ avisar }) {
             </div>
           </div>
         )}
-        {f.recordatorio_activo && (
+        <Interruptor activo={f.recordatorio_quincena} onCambio={(v) => set('recordatorio_quincena', v)}
+          etiqueta="Recordatorio de quincena"
+          ayuda="El 15 y el 30 de cada mes a las 4:00 pm (en febrero, el último día), a quienes deban y tengan los avisos activados." />
+        {(f.recordatorio_activo || f.recordatorio_quincena) && (
           <div className="animar-entrada">
             <label className="etiqueta" htmlFor="arecmin">Solo si deben al menos ($)</label>
             <input id="arecmin" className="input" type="number" step="0.25" min="0" value={f.recordatorio_minimo}

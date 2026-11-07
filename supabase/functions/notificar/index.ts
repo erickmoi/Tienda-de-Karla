@@ -1,5 +1,5 @@
 // Notificaciones push (Web Push).
-// - Desde la base de datos (cabecera x-notif-token): avisos de stock y recordatorios semanales.
+// - Desde la base de datos (cabecera x-notif-token): avisos de stock y recordatorios (semanal y de quincena).
 // - Desde la app (sesión de usuario): recordar un cobro a alguien, o una prueba a uno mismo.
 import webpush from 'npm:web-push@3.6.7'
 import { admin, CORS, json, puede, quienLlama } from '../_shared/comun.ts'
@@ -114,16 +114,19 @@ Deno.serve(async (req) => {
       }
 
       if (cuerpo.accion === 'recordatorios') {
+        const quincena = cuerpo.motivo === 'quincena'
         const { data: aj } = await admin.from('ajustes')
-          .select('recordatorio_activo, recordatorio_minimo, nombre_tienda').eq('id', 1).single()
-        if (!aj?.recordatorio_activo) return json({ ok: true, omitido: 'recordatorios apagados' })
+          .select('recordatorio_activo, recordatorio_quincena, recordatorio_minimo, nombre_tienda, nombre_encargada').eq('id', 1).single()
+        if (quincena ? !aj?.recordatorio_quincena : !aj?.recordatorio_activo) return json({ ok: true, omitido: 'recordatorios apagados' })
         const { data: saldos } = await admin.rpc('saldos_suscritos')
         let total = 0
         for (const s of saldos ?? []) {
           if (Number(s.saldo) >= Number(aj.recordatorio_minimo) && Number(s.saldo) > 0) {
             const r = await enviar([s.usuario_id], {
-              title: aj.nombre_tienda,
-              body: `Hola ${String(s.nombre).split(' ')[0]}, tienes ${dinero(s.saldo)} pendiente. ¡Gracias!`,
+              title: quincena ? `💸 ¡Feliz quincena!` : aj.nombre_tienda,
+              body: quincena
+                ? `Hola ${String(s.nombre).split(' ')[0]}, tu saldo en ${aj.nombre_tienda} es ${dinero(s.saldo)}. Hoy es buen día para pagarle a ${aj.nombre_encargada}. ¡Gracias!`
+                : `Hola ${String(s.nombre).split(' ')[0]}, tienes ${dinero(s.saldo)} pendiente. ¡Gracias!`,
               url: '/?vista=cuenta',
               tag: 'saldo',
             })

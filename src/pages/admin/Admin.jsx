@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { esJefatura, puede, useAuth } from '../../lib/auth'
 import { vibrar } from '../../lib/tema'
 import FilaDeslizable from '../../components/FilaDeslizable'
@@ -10,6 +10,9 @@ import Ajustes from './Ajustes'
 import Bitacora from './Bitacora'
 import Promociones from './Promociones'
 import Caja from './Caja'
+import CampoClave from '../../components/CampoClave'
+import { adminVencido, entrarConClave, marcarActividadAdmin, MINUTOS_BLOQUEO } from '../../lib/acceso'
+import { mensajeError } from '../../lib/format'
 
 export default function Admin({ avisar, pendientes = 0, onPendientes }) {
   const { perfil } = useAuth()
@@ -24,6 +27,28 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
     { id: 'bitacora', titulo: '📜 Bitácora', ver: esJefatura(perfil), C: Bitacora },
   ].filter((s) => s.ver)
   const [activa, setActiva] = useState(secciones[0]?.id)
+
+  const [bloqueado, setBloqueado] = useState(adminVencido)
+
+  // Cada toque dentro del panel cuenta como actividad; si pasan 10 min sin usarlo, se bloquea
+  useEffect(() => {
+    if (bloqueado) return
+    marcarActividadAdmin()
+    const marcar = () => marcarActividadAdmin()
+    const revisar = () => adminVencido() && setBloqueado(true)
+    window.addEventListener('pointerdown', marcar, { passive: true })
+    window.addEventListener('keydown', marcar)
+    document.addEventListener('visibilitychange', revisar)
+    const t = setInterval(revisar, 20_000)
+    return () => {
+      window.removeEventListener('pointerdown', marcar)
+      window.removeEventListener('keydown', marcar)
+      document.removeEventListener('visibilitychange', revisar)
+      clearInterval(t)
+    }
+  }, [bloqueado])
+
+  if (bloqueado) return <Desbloquear usuario={perfil.usuario} onListo={() => setBloqueado(false)} />
 
   if (!secciones.length) return <p className="py-10 text-center text-slate-500">No tienes permisos de administración.</p>
   const actual = secciones.find((s) => s.id === activa) ?? secciones[0]
@@ -48,5 +73,41 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
         <Actual avisar={avisar} onPendientes={onPendientes} />
       </div>
     </div>
+  )
+}
+
+function Desbloquear({ usuario, onListo }) {
+  const [clave, setClave] = useState('')
+  const [error, setError] = useState('')
+  const [enviando, setEnviando] = useState(false)
+
+  async function enviar(e) {
+    e.preventDefault()
+    setError('')
+    setEnviando(true)
+    try {
+      await entrarConClave(usuario, clave)
+      onListo()
+    } catch (err) {
+      setError(mensajeError(err))
+      setClave('')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  return (
+    <form onSubmit={enviar} className="animar-entrada tarjeta mx-auto mt-6 max-w-sm space-y-4 text-center">
+      <div className="animar-pop text-5xl">🔒</div>
+      <div>
+        <h2 className="text-lg font-bold text-slate-900">Panel bloqueado</h2>
+        <p className="text-sm text-slate-500">
+          Por seguridad se bloquea tras {MINUTOS_BLOQUEO} minutos sin uso. Escribe tu PIN o contraseña para seguir.
+        </p>
+      </div>
+      <CampoClave id="desbloquear" value={clave} onChange={setClave} autoFocus />
+      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <button disabled={enviando || clave.length < 6} className="btn-primario w-full">{enviando ? 'Revisando…' : 'Desbloquear'}</button>
+    </form>
   )
 }
