@@ -115,7 +115,7 @@ export default function Menu({ avisar, onCompra }) {
 
       {/* Categorías */}
       {!busqueda && (
-        <div className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
+        <div className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
           {[{ id: 'todas', nombre: 'Todo' }, ...categorias].map((c) => (
             <button
               key={c.id}

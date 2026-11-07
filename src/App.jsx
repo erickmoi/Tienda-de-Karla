@@ -77,7 +77,11 @@ export default function App() {
     <div className="mx-auto min-h-screen max-w-3xl">
       <Aviso aviso={aviso} onCerrar={cerrarAviso} />
 
-      <header className="flex items-center justify-between px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
+      {/* Banda sólida bajo la barra de estado (solo en la app instalada) */}
+      <div aria-hidden="true" className="fixed inset-x-0 top-0 z-30 bg-slate-50"
+        style={{ height: 'calc(env(safe-area-inset-top) + var(--espacio-arriba))' }} />
+
+      <header className="flex items-center justify-between px-4 pb-2 pt-[calc(max(1rem,env(safe-area-inset-top))+var(--espacio-arriba))]">
         <h1 className="flex items-center gap-2 text-xl font-bold text-marca-texto">
           <Logo className="h-8 w-8 text-2xl" />
           <span className="truncate">{apariencia.nombre_tienda}</span>

@@ -9,7 +9,7 @@ export function Aviso({ aviso, onCerrar }) {
   if (!aviso) return null
   const color = aviso.tipo === 'error' ? 'bg-red-600' : 'bg-emerald-600'
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(0.75rem+env(safe-area-inset-top)+var(--espacio-arriba))] z-[60] flex justify-center px-4">
       <div
         key={aviso.texto}
         role="status"

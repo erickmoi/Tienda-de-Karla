@@ -35,6 +35,11 @@
   --color-amber-800: #fcd34d;
 }
 
+/* iOS 26 difumina una franja bajo la barra de estado en apps instaladas.
+   Se deja una banda sólida de ese alto y el contenido empieza debajo. */
+:root { --espacio-arriba: 0px; }
+@media (display-mode: standalone) { :root { --espacio-arriba: 2.5rem; } }
+
 html, body, #root { min-height: 100%; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
