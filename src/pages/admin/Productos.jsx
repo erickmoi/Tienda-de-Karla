@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
+import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { borrarFoto, subirFoto } from '../../lib/fotos'
 
@@ -79,7 +80,7 @@ export default function Productos({ avisar }) {
       </div>
 
       <input className="input" type="search" placeholder="Buscar producto" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4">
+      <FilaDeslizable sangria>
         {filtros.map((f) => (
           <button key={f.id} onClick={() => setFiltro(f.id)}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
@@ -87,7 +88,7 @@ export default function Productos({ avisar }) {
             {f.nombre}
           </button>
         ))}
-      </div>
+      </FilaDeslizable>
 
       {lote && (
         <div className="flex items-center justify-between rounded-xl bg-marca-claro px-3 py-2 text-sm">

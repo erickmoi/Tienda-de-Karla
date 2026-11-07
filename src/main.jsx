@@ -5,15 +5,23 @@ import App from './App.jsx'
 import { AuthProvider } from './lib/auth.jsx'
 import { AparienciaProvider } from './lib/apariencia.jsx'
 import { temaInicial } from './lib/tema'
+import { escucharInstalacion } from './lib/instalar'
+import Instalar from './pages/Instalar.jsx'
 
 temaInicial()
+escucharInstalacion()
+
+// /instalar es una página pública (se comparte por WhatsApp antes de tener cuenta)
+const esGuia = window.location.pathname.replace(/\/$/, '') === '/instalar'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AparienciaProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      {esGuia ? <Instalar /> : (
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      )}
     </AparienciaProvider>
   </StrictMode>,
 )

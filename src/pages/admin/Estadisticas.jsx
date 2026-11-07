@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { dinero, mensajeError } from '../../lib/format'
+import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Vacio } from '../../components/ui'
 import { descargarCSV, fechaCSV } from '../../lib/csv'
 
@@ -40,7 +41,7 @@ export default function Estadisticas({ avisar }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <FilaDeslizable>
         {RANGOS.map((r) => (
           <button key={r.id} onClick={() => setRango(r.id)}
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${
@@ -49,7 +50,7 @@ export default function Estadisticas({ avisar }) {
             {r.titulo}
           </button>
         ))}
-      </div>
+      </FilaDeslizable>
 
       {cargando && !datos ? <Cargando /> : datos && (
         <div className={`space-y-4 ${cargando ? 'opacity-60' : ''}`}>

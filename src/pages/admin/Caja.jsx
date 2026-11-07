@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { dinero, fecha, mensajeError } from '../../lib/format'
 import { descargarCSV, fechaCSV } from '../../lib/csv'
+import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Vacio } from '../../components/ui'
 
 const hoySV = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador' }).format(new Date())
@@ -35,7 +36,7 @@ export default function Caja({ avisar }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
+      <FilaDeslizable>
         {RANGOS.map((r) => (
           <button key={r.id} onClick={() => setRango(r.id)}
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${
@@ -43,7 +44,7 @@ export default function Caja({ avisar }) {
             {r.titulo}
           </button>
         ))}
-      </div>
+      </FilaDeslizable>
 
       {!datos ? <Cargando /> : (
         <>

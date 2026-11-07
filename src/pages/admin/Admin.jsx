@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { esJefatura, puede, useAuth } from '../../lib/auth'
 import { vibrar } from '../../lib/tema'
+import FilaDeslizable from '../../components/FilaDeslizable'
 import Deudores from './Deudores'
 import Productos from './Productos'
 import Estadisticas from './Estadisticas'
@@ -30,11 +31,11 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
 
   return (
     <div className="space-y-4 pb-28">
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <FilaDeslizable sangria>
         {secciones.map((s) => (
           <button key={s.id} onClick={() => { vibrar(6); setActiva(s.id) }}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-all duration-200 ${
-              actual.id === s.id ? 'scale-105 bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
+              actual.id === s.id ? 'bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
             }`}>
             {s.titulo}
             {s.insignia > 0 && (
@@ -42,7 +43,7 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
             )}
           </button>
         ))}
-      </div>
+      </FilaDeslizable>
       <div key={actual.id} className="animar-entrada">
         <Actual avisar={avisar} onPendientes={onPendientes} />
       </div>

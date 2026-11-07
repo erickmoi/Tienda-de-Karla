@@ -7,6 +7,8 @@ import { aplicarModo, vibrar } from '../lib/tema'
 import { activarPush, desactivarPush, estadoPush, necesitaInstalar } from '../lib/push'
 import { invocar } from '../lib/funciones'
 import { Cargando, Exito, Hoja, Interruptor } from '../components/ui'
+import GuiaInstalar from '../components/GuiaInstalar'
+import { estaInstalada } from '../lib/instalar'
 import ListaCompras, {
   FormaDePago, ListaPagos, SELECT_COMPRAS, SELECT_PAGOS, SELECT_REPORTES,
 } from '../components/ListaCompras'
@@ -370,6 +372,13 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
             </>
           )}
         </section>
+
+        {!estaInstalada() && (
+          <section className="space-y-2">
+            <p className="etiqueta">📲 Instalar la app</p>
+            <GuiaInstalar />
+          </section>
+        )}
 
         <form onSubmit={cambiarPin} className="space-y-3">
           <p className="etiqueta">Cambiar mi PIN</p>

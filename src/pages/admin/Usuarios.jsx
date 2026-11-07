@@ -5,6 +5,7 @@ import { fecha, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { invocar, pinAleatorio } from '../../lib/funciones'
 import { useApariencia } from '../../lib/apariencia'
+import { enlaceInstalar } from '../../lib/instalar'
 
 const ROLES = {
   superadmin: 'Superadmin',
@@ -72,6 +73,11 @@ export default function Usuarios({ avisar }) {
         <p className="text-sm text-slate-500">{usuarios.length} cuentas registradas</p>
         <button onClick={() => setCreando(true)} className="btn-primario py-2 text-sm">+ Crear cuenta</button>
       </div>
+      <a href={`https://wa.me/?text=${encodeURIComponent(`¡Ya tenemos app para la tienda! 🛒 Instálala aquí: ${enlaceInstalar()}`)}`}
+        target="_blank" rel="noopener noreferrer"
+        className="btn flex items-center justify-center gap-2 bg-emerald-600 text-sm text-white">
+        💬 Invitar por WhatsApp (enlace para instalar)
+      </a>
       {porAprobar.length > 0 && (
         <section className="animar-entrada rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
           <h3 className="mb-2 font-bold text-amber-800">👤 Cuentas por aprobar ({porAprobar.length})</h3>

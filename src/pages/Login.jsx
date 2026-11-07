@@ -104,6 +104,7 @@ export default function Login() {
           {apariencia.registro === 'aprobacion' && modo === 'crear' && (
             <p className="text-center text-xs text-slate-500">{apariencia.nombre_encargada} aprobará tu cuenta antes de que puedas comprar.</p>
           )}
+          <a href="/instalar" className="block text-center text-sm font-semibold text-marca-texto">📲 ¿Cómo instalar la app?</a>
           {modo === 'entrar' && (
             <p className="text-center text-xs text-slate-500">¿Olvidaste tu PIN? Pídele a {apariencia.nombre_encargada} que lo restablezca.</p>
           )}

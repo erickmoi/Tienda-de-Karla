@@ -8,6 +8,9 @@ import { calcularDescuentos, cargarPromos, etiquetaPromo, faltaParaPromo } from 
 import { encolar, enviarPendientes, esErrorDeRed, pendientes } from '../lib/cola'
 import { Contador, Exito, Hoja, Vacio } from '../components/ui'
 import { FormaDePago } from '../components/ListaCompras'
+import FilaDeslizable from '../components/FilaDeslizable'
+import GuiaInstalar from '../components/GuiaInstalar'
+import { avisoDescartado, descartarAviso, estaInstalada } from '../lib/instalar'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
@@ -43,6 +46,8 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const [enCola, setEnCola] = useState(pendientes().length)
   const [enLinea, setEnLinea] = useState(navigator.onLine)
   const inputBusqueda = useRef(null)
+  const [avisoInstalar, setAvisoInstalar] = useState(() => !estaInstalada() && !avisoDescartado())
+  const [verGuia, setVerGuia] = useState(false)
 
   const cargar = useCallback(async () => {
     const [c, p, u, pr] = await Promise.all([
@@ -235,6 +240,22 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
           ⏳ {enCola === 1 ? '1 compra guardada' : `${enCola} compras guardadas`} por enviar · Enviar ahora
         </button>
       )}
+      {avisoInstalar && (
+        <div className="animar-entrada mb-2 flex items-center gap-3 rounded-2xl bg-marca-claro p-3">
+          <span className="text-2xl">📲</span>
+          <button onClick={() => setVerGuia(true)} className="min-w-0 flex-1 text-left">
+            <span className="block text-sm font-bold text-marca-texto">Instala la app en tu celular</span>
+            <span className="block text-xs text-slate-600">Abre más rápido y te llegan los avisos. Toca para ver cómo.</span>
+          </button>
+          <button onClick={() => { descartarAviso(); setAvisoInstalar(false) }} aria-label="Ocultar aviso"
+            className="shrink-0 px-1 text-slate-400">✕</button>
+        </div>
+      )}
+      {verGuia && (
+        <Hoja titulo="📲 Instalar la app" onCerrar={() => setVerGuia(false)}>
+          <GuiaInstalar onInstalada={() => { setVerGuia(false); setAvisoInstalar(false) }} />
+        </Hoja>
+      )}
       {cerrada && (
         <p className="mb-2 rounded-xl bg-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700">
           🔒 {apariencia.mensaje_cerrado}
@@ -243,7 +264,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
 
       {/* Fila fija: lupa + "Lo de siempre" + promos + categorías */}
       <div data-tour="categorias"
-        className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
+        className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 bg-slate-50 px-4 py-1.5 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
         {buscando ? (
           <div className="animar-entrada flex items-center gap-2">
             <input ref={inputBusqueda} className="input py-2" type="search" placeholder="Buscar producto" value={busqueda}
@@ -252,7 +273,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
               className="shrink-0 px-2 text-sm font-semibold text-slate-500">Cerrar</button>
           </div>
         ) : (
-          <div className="flex gap-2 overflow-x-auto">
+          <FilaDeslizable>
             <button onClick={() => setBuscando(true)} aria-label="Buscar"
               className="shrink-0 rounded-full bg-superficie px-3 py-1.5 ring-1 ring-slate-200">🔎</button>
             {loDeSiempre.length > 0 && totalUnidades === 0 && (
@@ -265,13 +286,13 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
               <button key={c.id} onClick={() => { vibrar(6); setCatActiva(c.id) }}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-all duration-200 ${
                   catActiva === c.id
-                    ? c.promo ? 'scale-105 bg-orange-500 text-white shadow' : 'scale-105 bg-marca text-sobre-marca shadow'
+                    ? c.promo ? 'bg-orange-500 text-white shadow' : 'bg-marca text-sobre-marca shadow'
                     : c.promo ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
                 }`}>
                 {c.emoji} {c.nombre}
               </button>
             ))}
-          </div>
+          </FilaDeslizable>
         )}
       </div>
 
@@ -458,7 +479,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
       style={p.foto_url ? undefined : { background: `color-mix(in oklab, ${cat?.tinte ?? '#e2e8f0'} 55%, var(--color-superficie))` }}>
       {p.foto_url
         ? <img src={p.foto_url} alt="" loading="lazy" className="h-full w-full object-cover" />
-        : <span className={lista ? 'text-2xl' : compacta ? 'text-2xl' : 'text-3xl'}>{cat?.emoji ?? '🛍️'}</span>}
+        : <span className={lista ? 'text-2xl' : compacta ? '-mt-6 text-2xl' : '-mt-8 text-4xl'}>{cat?.emoji ?? '🛍️'}</span>}
     </span>
   )
 
@@ -497,17 +518,16 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
     )
   }
 
-  // ---- Vista en cuadrícula: foto 4:3 con botón flotante ----
+  // ---- Vista en cuadrícula: la foto llena la tarjeta y el texto va en una franja translúcida ----
   return (
-    <div {...tourAttr} className={`tarjeta flex flex-col overflow-hidden p-0 transition ${marcado} ${apagado}`}>
-      <div className="relative">
-        {imagen(compacta ? 'aspect-[5/4] w-full' : 'aspect-[16/10] w-full')}
-        {promoTag && <span className="absolute left-1.5 top-1.5">{promoTag}</span>}
-        <span className={`absolute bottom-1.5 right-1.5 ${compacta ? 'origin-bottom-right scale-90' : ''}`}>{control}</span>
-      </div>
-      <div className={compacta ? 'px-2 pb-2 pt-1.5' : 'px-2.5 pb-2.5 pt-2'}>
-        <p className={`line-clamp-2 font-semibold leading-tight text-slate-800 ${compacta ? 'text-xs' : 'text-sm'}`}>{p.nombre}</p>
-        <div className="mt-0.5 flex items-center justify-between gap-1">
+    <div {...tourAttr} className={`relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 transition ${
+      compacta ? 'aspect-[4/5]' : 'aspect-[5/4]'} ${marcado} ${apagado}`}>
+      {imagen('absolute inset-0 h-full w-full')}
+      <span className={`absolute right-1.5 top-1.5 z-10 ${compacta ? 'origin-top-right scale-90' : ''}`}>{control}</span>
+      <div className={`absolute inset-x-0 bottom-0 bg-superficie/55 backdrop-blur-md ${compacta ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}>
+        {promoTag && <div className="mb-0.5 leading-none">{promoTag}</div>}
+        <p className={`line-clamp-2 font-semibold leading-tight text-slate-900 ${compacta ? 'text-[11px]' : 'text-sm'}`}>{p.nombre}</p>
+        <div className="flex items-center justify-between gap-1">
           <span className={`font-bold text-marca-texto ${compacta ? 'text-xs' : 'text-sm'}`}>{dinero(p.precio)}</span>
           {stockTxt}
         </div>
@@ -524,7 +544,7 @@ function EsqueletoMenu({ columnas }) {
       </div>
       <div className={`grid ${GRID[columnas] ?? GRID[2]}`}>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className={`esqueleto ${columnas === 1 ? 'h-16' : 'aspect-[4/5]'}`} />
+          <div key={i} className={`esqueleto ${columnas === 1 ? 'h-16' : columnas === 3 ? 'aspect-[4/5]' : 'aspect-[5/4]'}`} />
         ))}
       </div>
     </div>

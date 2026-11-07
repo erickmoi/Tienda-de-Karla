@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { vibrar } from '../lib/tema'
+import { estaInstalada, plataforma } from '../lib/instalar'
 
 // Recorrido guiado: resalta elementos reales de la pantalla (data-tour="...")
 // Cada paso puede pedir cambiar de vista antes de mostrarse.
@@ -24,6 +25,15 @@ export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes,
     p.push({ objetivo: 'mi-perfil', vista: 'cuenta', titulo: 'Tu perfil', texto: 'Cambia tu nombre, tu PIN, el modo oscuro y activa las notificaciones.' })
     if (esPersonal) {
       p.push({ objetivo: 'nav-admin', vista: 'cuenta', titulo: 'Administración', texto: 'Aquí apruebas pagos, cobras, manejas productos e inventario, y ves estadísticas.' })
+    }
+    if (!estaInstalada()) {
+      p.push({
+        titulo: '📲 Instálala en tu celular',
+        texto: plataforma() === 'ios'
+          ? 'En Safari toca Compartir (el cuadro con flecha ↑) → “Agregar a pantalla de inicio” → “Agregar”. Luego ábrela desde el ícono.'
+          : 'En Chrome toca ⋮ (arriba a la derecha) → “Instalar app”. También está el aviso morado arriba del menú.',
+        vista: 'menu',
+      })
     }
     p.push({ titulo: '¡Listo! 🎉', texto: 'Puedes volver a ver esto en Mi cuenta → Mi perfil.', vista: 'menu' })
     return p
