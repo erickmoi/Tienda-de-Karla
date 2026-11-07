@@ -171,6 +171,7 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
 
 function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
   const encargada = useEncargada()
+  const { apariencia: { pagos_auto: auto } } = useApariencia()
   const [monto, setMonto] = useState(saldo > 0 ? saldo.toFixed(2) : '')
   const [metodo, setMetodo] = useState('efectivo')
   const [referencia, setReferencia] = useState('')
@@ -194,14 +195,17 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
   }
 
   if (exito) {
-    return <Exito texto="¡Enviado!" sub={`${encargada} lo revisará y se aplicará a tu cuenta.`} onFin={onListo} />
+    return auto
+      ? <Exito texto="¡Aplicado!" sub="Tu pago ya está en tu cuenta." onFin={onListo} />
+      : <Exito texto="¡Enviado!" sub={`${encargada} lo revisará y se aplicará a tu cuenta.`} onFin={onListo} />
   }
 
   return (
     <Hoja titulo={saldo > 0 ? 'Ya pagué / Agregar crédito' : 'Agregar crédito'} onCerrar={onCerrar}>
       <form onSubmit={enviar} className="space-y-4">
         <p className="text-sm text-slate-600">
-          Entrégale el dinero a {encargada} o haz la transferencia, y avísale aquí. Se aplica cuando {encargada} lo apruebe.
+          Entrégale el dinero a {encargada} o haz la transferencia, y avísale aquí.{' '}
+          {auto ? 'Se aplica a tu cuenta al instante.' : `Se aplica cuando ${encargada} lo apruebe.`}
           {saldo > 0 && <> Lo que pase de tu deuda queda como crédito a favor.</>}
         </p>
         <div>
@@ -221,7 +225,7 @@ function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
           <p className="etiqueta">¿Cómo pagaste?</p>
           <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia} />
         </div>
-        <button disabled={enviando} className="btn-primario w-full">{enviando ? 'Enviando…' : `Avisar a ${encargada}`}</button>
+        <button disabled={enviando} className="btn-primario w-full">{enviando ? 'Enviando…' : auto ? 'Registrar pago' : `Avisar a ${encargada}`}</button>
       </form>
     </Hoja>
   )

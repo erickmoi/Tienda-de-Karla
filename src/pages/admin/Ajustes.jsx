@@ -53,6 +53,8 @@ export default function Ajustes({ avisar }) {
         nombre_tienda: f.nombre_tienda.trim() || 'Tienda de Karla',
         nombre_encargada: f.nombre_encargada.trim() || 'Karla',
         pagos_clientes: f.pagos_clientes,
+        pagos_auto: f.pagos_auto,
+        mostrar_stock: f.mostrar_stock,
         frase: f.frase.trim(),
         emoji: f.emoji || '🍿',
         logo_url,
@@ -162,6 +164,9 @@ export default function Ajustes({ avisar }) {
           )}
         </div>
 
+        <Interruptor activo={f.mostrar_stock} onCambio={(v) => set('mostrar_stock', v)}
+          etiqueta="Mostrar cuántos quedan"
+          ayuda="Los clientes ven “Quedan 7” en cada producto y se va descontando con cada compra." />
         <div>
           <p className="etiqueta">Vista del menú</p>
           <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
@@ -182,6 +187,15 @@ export default function Ajustes({ avisar }) {
         <Interruptor activo={f.pagos_clientes} onCambio={(v) => set('pagos_clientes', v)}
           etiqueta="Clientes pueden avisar sus pagos"
           ayuda={`Al comprar pueden marcar “Ya pagué” y agregar crédito. Nada se aplica hasta que ${f.nombre_encargada || 'Karla'} lo apruebe. Si se apaga, solo ${f.nombre_encargada || 'Karla'} registra pagos.`} />
+        {f.pagos_clientes && (
+          <div className="animar-entrada">
+            <Interruptor activo={!f.pagos_auto} onCambio={(v) => set('pagos_auto', !v)}
+              etiqueta={`${f.nombre_encargada || 'Karla'} confirma cada pago`}
+              ayuda={f.pagos_auto
+                ? 'Apagado: los pagos que avisan los clientes se aplican al instante, sin revisión.'
+                : `Encendido: los pagos quedan en revisión hasta que ${f.nombre_encargada || 'Karla'} los apruebe.`} />
+          </div>
+        )}
         <Interruptor activo={f.permitir_saldo_favor} onCambio={(v) => set('permitir_saldo_favor', v)}
           etiqueta="Permitir crédito a favor" ayuda="Aceptar pagos por adelantado que se descuentan en cada compra." />
         <Interruptor activo={f.mostrar_deudas} onCambio={(v) => set('mostrar_deudas', v)}

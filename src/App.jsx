@@ -168,6 +168,7 @@ export default function App() {
           encargada={apariencia.nombre_encargada}
           esPersonal={esPersonal(perfil)}
           pagosClientes={apariencia.pagos_clientes}
+          pagosAuto={apariencia.pagos_auto}
           setVista={setVista}
           onFin={terminarTutorial}
         />

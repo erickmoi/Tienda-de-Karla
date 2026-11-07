@@ -49,6 +49,13 @@ export default function Menu({ avisar, onCompra }) {
 
   useEffect(() => { cargar() }, [cargar])
 
+  // Al volver a la app, el stock se actualiza (otros pudieron comprar)
+  useEffect(() => {
+    const alVolver = () => document.visibilityState === 'visible' && cargar()
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+  }, [cargar])
+
   const visibles = useMemo(() => {
     if (!productos) return []
     const q = sinAcentos(busqueda.trim())
@@ -105,7 +112,7 @@ export default function Menu({ avisar, onCompra }) {
     }
     vibrar([20, 40, 20])
     setExito(conPago
-      ? { texto: '¡Registrado!', sub: `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.` }
+      ? { texto: '¡Registrado!', sub: apariencia.pagos_auto ? `Compra pagada: ${dinero(total)}. ¡Buen provecho!` : `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.` }
       : { texto: '¡Registrado!', sub: `${dinero(total)} a tu cuenta. ¡Buen provecho!` })
     setCarrito({})
     setPagado(false)
@@ -167,6 +174,7 @@ export default function Menu({ avisar, onCompra }) {
               key={p.id}
               p={p}
               tour={i === 0}
+              mostrarStock={apariencia.mostrar_stock}
               lista={columnas === 1}
               compacta={columnas === 3}
               enCarrito={carrito[p.id] || 0}
@@ -237,11 +245,11 @@ export default function Menu({ avisar, onCompra }) {
             </div>
           )}
           <button onClick={registrar} disabled={registrando || totalUnidades === 0} className="btn-primario mt-4 w-full">
-            {registrando ? 'Registrando…' : pagado && apariencia.pagos_clientes ? 'Registrar y avisar pago' : 'Registrar compra'}
+            {registrando ? 'Registrando…' : pagado && apariencia.pagos_clientes ? (apariencia.pagos_auto ? 'Registrar como pagada' : 'Registrar y avisar pago') : 'Registrar compra'}
           </button>
           <p className="mt-2 text-center text-xs text-slate-500">
             {pagado && apariencia.pagos_clientes
-              ? `El pago se aplica cuando ${encargada} lo apruebe.`
+              ? apariencia.pagos_auto ? 'El pago se aplica al instante.' : `El pago se aplica cuando ${encargada} lo apruebe.`
               : 'Se suma a tu cuenta. Podrás borrarla por unos minutos si te equivocas.'}
           </p>
         </Hoja>
@@ -252,7 +260,13 @@ export default function Menu({ avisar, onCompra }) {
   )
 }
 
-function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour }) {
+function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour, mostrarStock }) {
+  const quedan = p.stock - enCarrito
+  const stockTxt = mostrarStock && !p.agotado ? (
+    <span className={`text-xs font-medium ${quedan <= 3 ? 'text-amber-700' : 'text-slate-500'}`}>
+      {quedan > 0 ? `Quedan ${quedan}` : 'No quedan más'}
+    </span>
+  ) : null
   const foto = (
     <span key={pop} className={`flex items-center justify-center overflow-hidden rounded-xl bg-marca-claro ${pop ? 'animar-pop' : ''} ${
       lista ? 'h-14 w-14 shrink-0 text-2xl' : `mb-2 aspect-square w-full ${compacta ? 'text-2xl' : 'text-4xl'}`
@@ -283,6 +297,7 @@ function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour }
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-slate-800">{p.nombre}</p>
           <p className="font-bold text-marca-texto">{dinero(p.precio)}</p>
+          {stockTxt}
         </div>
         {control}
       </div>
@@ -293,7 +308,8 @@ function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour }
     <div {...tourAttr} className={`tarjeta flex flex-col p-3 transition ${marcado} ${apagado}`}>
       {foto}
       <p className={`line-clamp-2 font-semibold text-slate-800 ${compacta ? 'min-h-8 text-xs' : 'min-h-10 text-sm'}`}>{p.nombre}</p>
-      <p className={`mb-2 font-bold text-marca-texto ${compacta ? 'text-sm' : ''}`}>{dinero(p.precio)}</p>
+      <p className={`font-bold text-marca-texto ${compacta ? 'text-sm' : ''} ${stockTxt ? '' : 'mb-2'}`}>{dinero(p.precio)}</p>
+      {stockTxt && <p className="mb-2">{stockTxt}</p>}
       <div className={`mt-auto flex justify-center ${compacta ? 'origin-bottom scale-90' : ''}`}>{control}</div>
     </div>
   )

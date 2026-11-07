@@ -11,6 +11,8 @@ const POR_DEFECTO = {
   columnas_menu: 2,
   nombre_encargada: 'Karla',
   pagos_clientes: true,
+  mostrar_stock: false,
+  pagos_auto: false,
 }
 
 const AparienciaContext = createContext({ apariencia: POR_DEFECTO, recargar: () => {} })

@@ -3,7 +3,7 @@ import { vibrar } from '../lib/tema'
 
 // Recorrido guiado: resalta elementos reales de la pantalla (data-tour="...")
 // Cada paso puede pedir cambiar de vista antes de mostrarse.
-export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes, setVista, onFin }) {
+export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes, pagosAuto, setVista, onFin }) {
   const pasos = useMemo(() => {
     const p = [
       { titulo: `¡Hola, ${nombre}! 👋`, texto: 'Te muestro cómo usar la tienda en menos de un minuto.', vista: 'menu' },
@@ -12,14 +12,14 @@ export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes,
       {
         titulo: '🛒 Registra tu compra',
         texto: pagosClientes
-          ? `Abajo aparecerá “Ver carrito”. Ahí eliges “A mi cuenta” o “Ya pagué”. Si ya pagaste, ${encargada} lo aprueba.`
+          ? `Abajo aparecerá “Ver carrito”. Ahí eliges “A mi cuenta” o “Ya pagué”.${pagosAuto ? '' : ` Si ya pagaste, ${encargada} lo aprueba.`}`
           : 'Abajo aparecerá “Ver carrito”. Ahí registras la compra y se suma a tu cuenta.',
         vista: 'menu',
       },
       { objetivo: 'nav-cuenta', vista: 'menu', titulo: 'Mi cuenta', texto: 'Aquí ves cuánto debes o tu crédito, y tu historial. Si te equivocas, puedes borrar una compra durante unos minutos.' },
     ]
     if (pagosClientes) {
-      p.push({ objetivo: 'agregar-credito', vista: 'cuenta', titulo: 'Pagos y crédito', texto: `Cuando le pagues a ${encargada} o le transfieras, avísale aquí. Se aplica cuando ${encargada} lo apruebe.` })
+      p.push({ objetivo: 'agregar-credito', vista: 'cuenta', titulo: 'Pagos y crédito', texto: `Cuando le pagues a ${encargada} o le transfieras, avísale aquí.${pagosAuto ? ' Se aplica al instante.' : ` Se aplica cuando ${encargada} lo apruebe.`}` })
     }
     p.push({ objetivo: 'mi-perfil', vista: 'cuenta', titulo: 'Tu perfil', texto: 'Cambia tu nombre, tu PIN, el modo oscuro y activa las notificaciones.' })
     if (esPersonal) {
@@ -27,7 +27,7 @@ export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes,
     }
     p.push({ titulo: '¡Listo! 🎉', texto: 'Puedes volver a ver esto en Mi cuenta → Mi perfil.', vista: 'menu' })
     return p
-  }, [nombre, encargada, esPersonal, pagosClientes])
+  }, [nombre, encargada, esPersonal, pagosClientes, pagosAuto])
 
   const [i, setI] = useState(0)
   const [rect, setRect] = useState(null)

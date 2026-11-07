@@ -18,6 +18,7 @@ const ICONOS = {
   restablecer_pin: '🔑',
   recordar_cobro: '🔔',
   rechazar_pago: '❌',
+  pago_automatico: '⚡',
 }
 
 const ROLES = { superadmin: 'superadmin', admin: 'administración', colaborador: 'colaborador', cliente: 'cliente' }
@@ -56,6 +57,8 @@ function describir(e, nombres) {
       return `Creó la cuenta de ${d.nombre} (@${d.usuario})`
     case 'restablecer_pin':
       return `Restableció el PIN de ${d.nombre ?? quien(d.usuario_id)}`
+    case 'pago_automatico':
+      return `${quien(d.cliente_id)} registró un pago de ${dinero(d.monto)} (${d.metodo}), aplicado automáticamente`
     case 'rechazar_pago':
       return `Rechazó un pago de ${dinero(d.monto)} de ${quien(d.cliente_id)}${d.nota ? ` (${d.nota})` : ''}`
     case 'recordar_cobro':
