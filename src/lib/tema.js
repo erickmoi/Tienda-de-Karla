@@ -32,7 +32,6 @@ export function aplicarColor(hex) {
   const conBlanco = 1.05 / (L + 0.05)
   const conNegro = (L + 0.05) / 0.05
   raiz.style.setProperty('--color-sobre-marca', conBlanco >= conNegro ? '#ffffff' : '#111827')
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', hex)
   try { localStorage.setItem('tienda.color', hex) } catch { /* sin almacenamiento */ }
 }
 
@@ -42,7 +41,11 @@ export function aplicarModo(modo = 'auto') {
   const raiz = document.documentElement
   quitarEscucha?.()
   quitarEscucha = null
-  const poner = (oscuro) => raiz.classList.toggle('dark', oscuro)
+  // La barra de estado del celular toma el color del fondo de la app
+  const poner = (oscuro) => {
+    raiz.classList.toggle('dark', oscuro)
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oscuro ? '#0a0f1c' : '#f8fafc')
+  }
   if (modo === 'auto') {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     poner(mq.matches)
