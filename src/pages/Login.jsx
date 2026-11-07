@@ -48,7 +48,7 @@ export default function Login() {
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
         <div className="mb-6 text-center">
           <div className="text-4xl">🍿</div>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">Tiendita</h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Tienda de Karla</h1>
           <p className="text-sm text-slate-500">Anota lo que tomas y paga después</p>
         </div>
 

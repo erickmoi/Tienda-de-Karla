@@ -23,7 +23,7 @@ export default function Ajustes({ avisar }) {
     e.preventDefault()
     setGuardando(true)
     const { error } = await supabase.from('ajustes').update({
-      nombre_tienda: f.nombre_tienda.trim() || 'Tiendita',
+      nombre_tienda: f.nombre_tienda.trim() || 'Tienda de Karla',
       permitir_saldo_favor: f.permitir_saldo_favor,
       mostrar_deudas: f.mostrar_deudas,
       minutos_borrar: Math.min(60, Math.max(0, parseInt(f.minutos_borrar, 10) || 0)),

@@ -3,8 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
+import { borrarFoto, subirFoto } from '../../lib/fotos'
 
-const VACIO = { nombre: '', categoria_id: '', precio: '', costo: '', agotado_manual: false, activo: true }
+const VACIO = { nombre: '', categoria_id: '', precio: '', costo: '', foto_url: null, agotado_manual: false, activo: true }
 
 export default function Productos({ avisar }) {
   const { perfil } = useAuth()
@@ -48,7 +49,10 @@ export default function Productos({ avisar }) {
           {productos.map((p) => (
             <li key={p.id} className={`tarjeta p-3 ${p.activo ? '' : 'opacity-50'}`}>
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-marca-claro text-xl">
+                  {p.foto_url ? <img src={p.foto_url} alt="" className="h-full w-full object-cover" /> : '🍬'}
+                </div>
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold">{p.nombre}</p>
                   <p className="text-xs text-slate-500">
                     {nombreCat(p.categoria_id)} · {dinero(p.precio)}
@@ -109,7 +113,18 @@ function FormProducto({ producto, categorias, avisar, onCerrar, onGuardado }) {
     costo: producto.costo === '' ? '' : String(producto.costo),
   })
   const [guardando, setGuardando] = useState(false)
+  const [archivo, setArchivo] = useState(null)
+  const [vista, setVista] = useState(producto.foto_url)
+  const [quitarFoto, setQuitarFoto] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+
+  function elegirFoto(e) {
+    const a = e.target.files?.[0]
+    if (!a) return
+    setArchivo(a)
+    setQuitarFoto(false)
+    setVista(URL.createObjectURL(a))
+  }
 
   async function guardar(e) {
     e.preventDefault()
@@ -124,18 +139,57 @@ function FormProducto({ producto, categorias, avisar, onCerrar, onGuardado }) {
       activo: f.activo,
     }
     setGuardando(true)
-    const { error } = nuevo
-      ? await supabase.from('productos').insert(fila)
-      : await supabase.from('productos').update(fila).eq('id', producto.id)
-    setGuardando(false)
-    if (error) return avisar('error', mensajeError(error))
-    avisar('ok', nuevo ? 'Producto creado. Recuerda cargarle inventario.' : 'Producto actualizado.')
-    onGuardado()
+    try {
+      let id = producto.id
+      if (nuevo) {
+        const { data, error } = await supabase.from('productos').insert(fila).select('id').single()
+        if (error) throw error
+        id = data.id
+      } else {
+        const { error } = await supabase.from('productos').update(fila).eq('id', id)
+        if (error) throw error
+      }
+
+      if (archivo) {
+        const url = await subirFoto(id, archivo)
+        const { error } = await supabase.from('productos').update({ foto_url: url }).eq('id', id)
+        if (error) throw error
+        if (producto.foto_url) await borrarFoto(producto.foto_url).catch(() => {})
+      } else if (quitarFoto && producto.foto_url) {
+        const { error } = await supabase.from('productos').update({ foto_url: null }).eq('id', id)
+        if (error) throw error
+        await borrarFoto(producto.foto_url).catch(() => {})
+      }
+
+      avisar('ok', nuevo ? 'Producto creado. Recuerda cargarle inventario.' : 'Producto actualizado.')
+      onGuardado()
+    } catch (err) {
+      avisar('error', mensajeError(err))
+    } finally {
+      setGuardando(false)
+    }
   }
 
   return (
     <Hoja titulo={nuevo ? 'Nuevo producto' : 'Editar producto'} onCerrar={onCerrar}>
       <form onSubmit={guardar} className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-marca-claro text-3xl">
+            {vista ? <img src={vista} alt="" className="h-full w-full object-cover" /> : '🍬'}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="btn-secundario cursor-pointer py-1.5 text-center text-sm">
+              {vista ? 'Cambiar foto' : 'Agregar foto'}
+              <input type="file" accept="image/*" className="hidden" onChange={elegirFoto} />
+            </label>
+            {vista && (
+              <button type="button" className="text-sm font-semibold text-red-600"
+                onClick={() => { setArchivo(null); setVista(null); setQuitarFoto(true) }}>
+                Quitar foto
+              </button>
+            )}
+          </div>
+        </div>
         <div>
           <label className="etiqueta" htmlFor="pnombre">Nombre</label>
           <input id="pnombre" className="input" maxLength={80} value={f.nombre} onChange={set('nombre')} />

@@ -11,7 +11,7 @@ export default function App() {
   const { session, perfil, cargando, salir } = useAuth()
   const [vista, setVista] = useState('menu')
   const [aviso, setAviso] = useState(null)
-  const [nombreTienda, setNombreTienda] = useState('Tiendita')
+  const [nombreTienda, setNombreTienda] = useState('Tienda de Karla')
 
   const avisar = useCallback((tipo, texto) => setAviso({ tipo, texto }), [])
   const cerrarAviso = useCallback(() => setAviso(null), [])
