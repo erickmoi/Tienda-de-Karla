@@ -3,12 +3,14 @@ import { supabase } from '../../lib/supabase'
 import { mensajeError } from '../../lib/format'
 import { useApariencia } from '../../lib/apariencia'
 import { aplicarColor, PALETAS } from '../../lib/tema'
-import { borrarFoto, subirFoto } from '../../lib/fotos'
+import { borrarFoto, prepararFoto, subirFoto } from '../../lib/fotos'
 import { Cargando, Interruptor } from '../../components/ui'
 import MetodosPago from './MetodosPago'
 
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 const horaTxt = (h) => (h === 24 ? '12:00 a. m. (medianoche)' : `${h % 12 || 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`)
+
+const igual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
 const EMOJIS = ['🍿', '🛒', '🍬', '🍫', '🥤', '🍪', '🧁', '🍭', '☕', '🏪', '⭐', '🌙']
 
@@ -40,9 +42,15 @@ export default function Ajustes({ avisar }) {
     aplicarColor(hex) // vista previa en vivo
   }
 
-  function elegirLogo(e) {
+  async function elegirLogo(e) {
     const archivo = e.target.files?.[0]
-    if (archivo) setLogo({ archivo, vista: URL.createObjectURL(archivo) })
+    if (!archivo) return
+    try {
+      const lista = await prepararFoto(archivo)
+      setLogo({ archivo: lista, vista: lista.vista })
+    } catch (err) {
+      avisar('error', mensajeError(err))
+    }
   }
 
   async function guardar(e) {
@@ -53,7 +61,7 @@ export default function Ajustes({ avisar }) {
       if (logo?.archivo) logo_url = await subirFoto('tienda', logo.archivo)
       if (logo?.quitar) logo_url = null
 
-      const { error } = await supabase.from('ajustes').update({
+      const fila = {
         nombre_tienda: f.nombre_tienda.trim() || 'Tienda de Karla',
         nombre_encargada: f.nombre_encargada.trim() || 'Karla',
         pagos_clientes: f.pagos_clientes,
@@ -83,13 +91,20 @@ export default function Ajustes({ avisar }) {
         recordatorio_minimo: Math.max(0, Number(f.recordatorio_minimo) || 0),
         notificar_stock: f.notificar_stock,
         stock_bajo_umbral: Math.min(50, Math.max(0, parseInt(f.stock_bajo_umbral, 10) || 0)),
-      }).eq('id', 1)
+      }
+      // Solo se envía lo que cambió: así no se pisan los cambios que otra persona
+      // de administración haya guardado mientras esta pantalla estaba abierta.
+      const cambios = Object.fromEntries(Object.entries(fila).filter(([k, v]) => !igual(v, original[k])))
+      if (!Object.keys(cambios).length) {
+        avisar('ok', 'No había cambios por guardar.')
+        return
+      }
+      const { data: guardado, error } = await supabase.from('ajustes').update(cambios).eq('id', 1).select('*').single()
       if (error) throw error
 
       if (logo_url !== original.logo_url && original.logo_url) await borrarFoto(original.logo_url).catch(() => {})
-      const nuevo = { ...f, logo_url }
-      setF(nuevo)
-      setOriginal(nuevo)
+      setF(guardado)
+      setOriginal(guardado)
       setLogo(null)
       await recargar()
       avisar('ok', 'Ajustes guardados.')
@@ -100,6 +115,7 @@ export default function Ajustes({ avisar }) {
     }
   }
 
+  const pendientes = !!logo || Object.keys(f).some((k) => !igual(f[k], original[k]))
   const vistaLogo = logo?.quitar ? null : logo?.vista ?? f.logo_url
   const personalizado = !PALETAS.some((p) => p.color.toLowerCase() === f.color_marca.toLowerCase())
 
@@ -356,8 +372,13 @@ export default function Ajustes({ avisar }) {
       </section>
 
       <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
-        <button disabled={guardando} className="btn-primario w-full shadow-lg">
-          {guardando ? 'Guardando…' : 'Guardar ajustes'}
+        {pendientes && (
+          <p className="animar-entrada mb-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-center text-xs font-semibold text-amber-900 shadow">
+            Tienes cambios sin guardar. Si sales sin guardar, se pierden.
+          </p>
+        )}
+        <button disabled={guardando || !pendientes} className="btn-primario w-full shadow-lg disabled:opacity-60">
+          {guardando ? 'Guardando…' : pendientes ? 'Guardar cambios' : 'Todo guardado ✓'}
         </button>
       </div>
     </form>

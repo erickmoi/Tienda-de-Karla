@@ -69,6 +69,8 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
 
   const debe = datos.saldo > 0
   const aFavor = datos.saldo < 0
+  const limite = Number(perfil.limite_deuda ?? apariencia.limite_deuda ?? 0)
+  const usoLimite = limite > 0 && debe ? Math.min(100, (datos.saldo / limite) * 100) : null
   const enRevision = datos.reportes.filter((r) => r.estado === 'pendiente')
   const totalRevision = enRevision.reduce((s, r) => s + Number(r.monto), 0)
   // Rechazos de los últimos 7 días, para que la persona se entere
@@ -97,6 +99,16 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
             ⚙️ Mi perfil
           </button>
         </div>
+        {usoLimite != null && (
+          <div className="relative mt-3">
+            <div className="h-2 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-valuenow={Math.round(usoLimite)} aria-valuemin={0} aria-valuemax={100}>
+              <div className="h-full rounded-full bg-white transition-[width] duration-700 ease-out" style={{ width: `${usoLimite}%` }} />
+            </div>
+            <p className="mt-1 text-xs opacity-90">
+              {usoLimite >= 100 ? `Llegaste a tu límite de ${dinero(limite)}` : `Te quedan ${dinero(limite - datos.saldo)} de tu límite de ${dinero(limite)}`}
+            </p>
+          </div>
+        )}
         {apariencia.pagos_clientes && (
           <button data-tour="agregar-credito" onClick={() => setVerCredito(true)}
             className="relative mt-4 w-full rounded-xl bg-white py-2.5 text-sm font-bold text-slate-900 shadow transition active:scale-[0.98]">

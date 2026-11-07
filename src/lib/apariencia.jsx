@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import { aplicarColor } from './tema'
+import { actualizarIconoIOS } from './icono'
 
 const POR_DEFECTO = {
   nombre_tienda: 'Tienda de Karla',
@@ -26,6 +27,7 @@ export function AparienciaProvider({ children }) {
       setApariencia({ ...POR_DEFECTO, ...data })
       aplicarColor(data.color_marca)
       document.title = data.nombre_tienda
+      actualizarIconoIOS({ ...POR_DEFECTO, ...data })
     }
   }, [])
 

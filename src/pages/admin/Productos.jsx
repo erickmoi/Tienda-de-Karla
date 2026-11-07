@@ -4,7 +4,7 @@ import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
 import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
-import { borrarFoto, subirFoto } from '../../lib/fotos'
+import { borrarFoto, prepararFoto, subirFoto } from '../../lib/fotos'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const EMOJIS_CAT = ['🍿', '🍬', '🍪', '🥐', '🥤', '🍫', '🍭', '🧃', '☕', '🍞', '🥜', '🧁', '🍦', '🌮', '🛍️']
@@ -307,12 +307,17 @@ function FormProducto({ producto, categorias, avisar, onCerrar, onGuardado }) {
   const [quitarFoto, setQuitarFoto] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
 
-  function elegirFoto(e) {
+  async function elegirFoto(e) {
     const a = e.target.files?.[0]
     if (!a) return
-    setArchivo(a)
-    setQuitarFoto(false)
-    setVista(URL.createObjectURL(a))
+    try {
+      const lista = await prepararFoto(a)
+      setArchivo(lista)
+      setQuitarFoto(false)
+      setVista(lista.vista)
+    } catch (err) {
+      avisar('error', mensajeError(err))
+    }
   }
 
   async function guardar(e) {
@@ -371,6 +376,7 @@ function FormProducto({ producto, categorias, avisar, onCerrar, onGuardado }) {
               {vista ? 'Cambiar foto' : 'Agregar foto'}
               <input type="file" accept="image/*" className="hidden" onChange={elegirFoto} />
             </label>
+            {archivo && <p className="text-xs text-slate-500">✨ Ajustada: cuadrada y centrada</p>}
             {vista && (
               <button type="button" className="text-sm font-semibold text-red-600"
                 onClick={() => { setArchivo(null); setVista(null); setQuitarFoto(true) }}>

@@ -10,6 +10,7 @@ import { Contador, Exito, Hoja, Vacio } from '../components/ui'
 import { FormaDePago } from '../components/ListaCompras'
 import FilaDeslizable from '../components/FilaDeslizable'
 import GuiaInstalar from '../components/GuiaInstalar'
+import Antojos from '../components/Antojos'
 import { avisoDescartado, descartarAviso, estaInstalada } from '../lib/instalar'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -49,21 +50,42 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const inputBusqueda = useRef(null)
   const [avisoInstalar, setAvisoInstalar] = useState(() => !estaInstalada() && !avisoDescartado())
   const [verGuia, setVerGuia] = useState(false)
+  const [favoritos, setFavoritos] = useState(() => new Set())
+  const [antojos, setAntojos] = useState(null) // null = cerrado; texto inicial si está abierto
 
   const cargar = useCallback(async () => {
-    const [c, p, u, pr] = await Promise.all([
+    const [c, p, u, pr, f] = await Promise.all([
       supabase.from('categorias').select('id, nombre, orden, emoji').eq('activo', true).order('orden').order('nombre'),
       supabase.from('productos').select('id, nombre, precio, foto_url, stock, agotado, categoria_id').eq('activo', true),
       supabase.from('compras').select('compra_items(producto_id, cantidad)').eq('usuario_id', perfil.id)
         .eq('anulada', false).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       cargarPromos().catch(() => []),
+      supabase.from('favoritos').select('producto_id').eq('usuario_id', perfil.id),
     ])
     if (c.error || p.error) return avisar('error', mensajeError(c.error || p.error))
     setCategorias(c.data)
     setProductos(p.data)
     setUltima(u.data?.compra_items ?? [])
     setPromos(pr)
+    if (!f.error) setFavoritos(new Set(f.data.map((x) => x.producto_id)))
   }, [avisar, perfil.id])
+
+  // ⭐ Marcar / quitar favorito (cambia al instante; si falla, se revierte)
+  const alternarFavorito = useCallback(async (id) => {
+    vibrar(8)
+    const era = favoritos.has(id)
+    const cambiarSet = (quitar) => setFavoritos((s) => {
+      const n = new Set(s)
+      if (quitar) n.delete(id)
+      else n.add(id)
+      return n
+    })
+    cambiarSet(era)
+    const { error } = era
+      ? await supabase.from('favoritos').delete().eq('usuario_id', perfil.id).eq('producto_id', id)
+      : await supabase.from('favoritos').insert({ producto_id: id })
+    if (error) { cambiarSet(!era); avisar('error', mensajeError(error)) }
+  }, [favoritos, perfil.id, avisar])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -132,9 +154,13 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
         q ? sinAcentos(p.nombre).includes(q)
           : catActiva === 'todas' ? true
           : catActiva === 'promos' ? idsEnPromo.has(p.id)
+          : catActiva === 'favoritos' ? favoritos.has(p.id)
           : p.categoria_id === catActiva)
-      .sort((a, b) => Number(a.agotado) - Number(b.agotado) || a.nombre.localeCompare(b.nombre))
-  }, [productos, catActiva, busqueda, idsEnPromo])
+      // Agotados al final; favoritos primero
+      .sort((a, b) => Number(a.agotado) - Number(b.agotado)
+        || Number(favoritos.has(b.id)) - Number(favoritos.has(a.id))
+        || a.nombre.localeCompare(b.nombre))
+  }, [productos, catActiva, busqueda, idsEnPromo, favoritos])
 
   const items = Object.entries(carrito)
     .filter(([, n]) => n > 0)
@@ -226,6 +252,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
 
   const chips = [
     ...(promos.length ? [{ id: 'promos', nombre: 'Promos', emoji: '🔥', promo: true }] : []),
+    ...(favoritos.size ? [{ id: 'favoritos', nombre: 'Favoritos', emoji: '⭐' }] : []),
     { id: 'todas', nombre: 'Todo', emoji: '✨' },
     ...categorias,
   ]
@@ -307,7 +334,16 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
       )}
 
       {visibles.length === 0 ? (
-        <Vacio>{busqueda ? 'No encontramos ese producto.' : 'No hay productos aquí todavía.'}</Vacio>
+        busqueda ? (
+          <div className="py-8 text-center">
+            <p className="text-slate-500">No encontramos “{busqueda.trim()}”.</p>
+            <button onClick={() => setAntojos(busqueda.trim())} className="btn-secundario mt-3 text-sm">
+              💡 Pedirle a {encargada} que lo traiga
+            </button>
+          </div>
+        ) : catActiva === 'favoritos' ? (
+          <Vacio>Toca la ⭐ de un producto para guardarlo aquí.</Vacio>
+        ) : <Vacio>No hay productos aquí todavía.</Vacio>
       ) : (
         <div key={`${catActiva}-${busqueda ? 'b' : ''}`} className={`escalonado grid ${GRID[columnas] ?? GRID[2]}`}>
           {visibles.map((p, i) => (
@@ -322,10 +358,26 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
               enCarrito={carrito[p.id] || 0}
               pop={pop.id === p.id ? pop.n : 0}
               onCambiar={cambiar}
+              favorito={favoritos.has(p.id)}
+              onFavorito={alternarFavorito}
             />
           ))}
         </div>
       )}
+
+      {/* Buzón de antojos */}
+      {!busqueda && (
+        <button onClick={() => setAntojos('')}
+          className="tarjeta mt-4 flex w-full items-center gap-3 p-3 text-left transition active:scale-[0.98]">
+          <span className="text-2xl">💡</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold text-slate-900">¿No encuentras lo que se te antoja?</span>
+            <span className="block text-xs text-slate-500">Pídele a {encargada} que lo traiga o vota por lo que otros pidieron</span>
+          </span>
+          <span className="text-slate-400">›</span>
+        </button>
+      )}
+      {antojos !== null && <Antojos inicial={antojos} avisar={avisar} onCerrar={() => setAntojos(null)} />}
 
       {/* Barra del carrito */}
       {totalUnidades > 0 && (
@@ -461,7 +513,7 @@ function TarjetaPromo({ pr, porId, carrito }) {
   )
 }
 
-function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo, mostrarStock }) {
+function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo, mostrarStock, favorito, onFavorito }) {
   const lista = modo === 1
   const compacta = modo === 3
   const quedan = p.stock - enCarrito
@@ -487,10 +539,19 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
     </span>
   )
 
+  // Botón "+" discreto: claro con el signo en color de la tienda (se vuelve sólido al agregar)
   const botonMas = (
     <button onClick={() => onCambiar(p.id, 1)} disabled={enCarrito >= p.stock} aria-label={`Agregar ${p.nombre}`}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-marca text-xl font-bold text-sobre-marca shadow-md transition active:scale-90 disabled:opacity-40">
+      className="flex h-8 w-8 items-center justify-center rounded-full bg-superficie/90 text-xl font-semibold leading-none text-marca-texto shadow-sm ring-1 ring-black/5 backdrop-blur transition active:scale-90 active:bg-marca active:text-sobre-marca disabled:opacity-40">
       +
+    </button>
+  )
+  const estrella = (
+    <button type="button" onClick={() => onFavorito(p.id)} aria-pressed={favorito}
+      aria-label={favorito ? `Quitar ${p.nombre} de favoritos` : `Marcar ${p.nombre} como favorito`}
+      className={`flex h-7 w-7 items-center justify-center rounded-full text-sm transition active:scale-75 ${
+        favorito ? 'bg-amber-400/95 text-white shadow-sm' : lista ? 'text-slate-300' : 'bg-superficie/70 text-slate-400 backdrop-blur'}`}>
+      {favorito ? '★' : '☆'}
     </button>
   )
   const control = p.agotado ? (
@@ -509,6 +570,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
   if (lista) {
     return (
       <div {...tourAttr} className={`tarjeta relative isolate flex items-center gap-3 p-2 transition ${marcado} ${apagado}`}>
+        {estrella}
         {imagen('h-12 w-12 shrink-0 rounded-xl')}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-800">{p.nombre}</p>
@@ -527,6 +589,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
     <div {...tourAttr} className={`relative isolate overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 transition ${
       compacta ? 'aspect-[4/5]' : 'aspect-[5/4]'} ${marcado} ${apagado}`}>
       {imagen('absolute inset-0 h-full w-full')}
+      <span className={`absolute left-1.5 top-1.5 z-10 ${compacta ? 'origin-top-left scale-90' : ''}`}>{estrella}</span>
       <span className={`absolute right-1.5 top-1.5 z-10 ${compacta ? 'origin-top-right scale-90' : ''}`}>{control}</span>
       <div className={`absolute inset-x-0 bottom-0 bg-superficie/55 backdrop-blur-md ${compacta ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}>
         {promoTag && <div className="mb-0.5 leading-none">{promoTag}</div>}
