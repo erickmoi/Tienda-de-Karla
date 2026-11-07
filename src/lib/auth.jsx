@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
     setCargandoPerfil(true)
     const { data } = await supabase
       .from('perfiles')
-      .select('id, usuario, nombre, rol, permisos, activo, tema, telefono')
+      .select('id, usuario, nombre, rol, permisos, activo, tema, telefono, tutorial_visto')
       .eq('id', session.user.id)
       .maybeSingle()
     setPerfil(data)
@@ -51,7 +51,8 @@ export function AuthProvider({ children }) {
       value={{
         session,
         perfil,
-        cargando: session === undefined || cargandoPerfil,
+        // Solo pantalla de carga la primera vez; recargar el perfil no la vuelve a mostrar
+        cargando: session === undefined || (cargandoPerfil && !perfil),
         recargarPerfil: cargarPerfil,
         salir,
       }}

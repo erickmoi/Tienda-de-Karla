@@ -9,6 +9,8 @@ const POR_DEFECTO = {
   logo_url: null,
   frase: 'Anota lo que tomas y paga después',
   columnas_menu: 2,
+  nombre_encargada: 'Karla',
+  pagos_clientes: true,
 }
 
 const AparienciaContext = createContext({ apariencia: POR_DEFECTO, recargar: () => {} })
@@ -35,6 +37,9 @@ export function AparienciaProvider({ children }) {
 }
 
 export const useApariencia = () => useContext(AparienciaContext)
+
+// Nombre de quien atiende la tienda (Karla por defecto)
+export const useEncargada = () => useContext(AparienciaContext).apariencia.nombre_encargada || 'Karla'
 
 export function Logo({ className = 'h-8 w-8 text-2xl' }) {
   const { apariencia } = useApariencia()

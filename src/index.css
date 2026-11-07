@@ -33,6 +33,9 @@
   --color-emerald-700: #6ee7b7;
   --color-amber-50: #33270b;
   --color-amber-800: #fcd34d;
+  --color-amber-200: #5c4310;
+  --color-emerald-50: #0b2a20;
+  --color-emerald-200: #14532d;
 }
 
 /* iOS 26 difumina una franja bajo la barra de estado en apps instaladas.

@@ -1,10 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { esPersonal, useAuth } from './lib/auth'
+import { esPersonal, puede, useAuth } from './lib/auth'
 import { supabase } from './lib/supabase'
 import { Logo, useApariencia } from './lib/apariencia'
 import { dinero } from './lib/format'
 import { vibrar } from './lib/tema'
 import { Aviso, Cargando } from './components/ui'
+import Tutorial from './components/Tutorial'
 import Login from './pages/Login'
 import Menu from './pages/Menu'
 import MiCuenta from './pages/MiCuenta'
@@ -20,11 +21,13 @@ function vistaInicial() {
 }
 
 export default function App() {
-  const { session, perfil, cargando, salir } = useAuth()
+  const { session, perfil, cargando, salir, recargarPerfil } = useAuth()
   const { apariencia } = useApariencia()
   const [vista, setVista] = useState(vistaInicial)
   const [aviso, setAviso] = useState(null)
   const [saldo, setSaldo] = useState(0)
+  const [pendientes, setPendientes] = useState(0)
+  const [tutorial, setTutorial] = useState(false)
 
   const avisar = useCallback((tipo, texto) => setAviso({ tipo, texto }), [])
   const cerrarAviso = useCallback(() => setAviso(null), [])
@@ -37,6 +40,32 @@ export default function App() {
   useEffect(() => {
     if (perfil?.activo) refrescarSaldo()
   }, [perfil?.activo, refrescarSaldo])
+
+  // Pagos por aprobar (para quien puede aprobarlos): al entrar y cada minuto
+  const aprueba = puede(perfil, 'pagos')
+  useEffect(() => {
+    if (!aprueba) return
+    const contar = () => supabase.from('reportes_pago').select('id', { count: 'exact', head: true })
+      .eq('estado', 'pendiente').then(({ count }) => setPendientes(count ?? 0))
+    contar()
+    const t = setInterval(contar, 60000)
+    return () => clearInterval(t)
+  }, [aprueba, vista])
+
+  // Tutorial la primera vez que alguien entra
+  useEffect(() => {
+    if (perfil?.activo && perfil.tutorial_visto === false) setTutorial(true)
+  }, [perfil?.id, perfil?.activo, perfil?.tutorial_visto])
+
+  const terminarTutorial = useCallback(async () => {
+    setTutorial(false)
+    setVista('menu')
+    window.scrollTo({ top: 0 })
+    if (perfil && !perfil.tutorial_visto) {
+      await supabase.from('perfiles').update({ tutorial_visto: true }).eq('id', perfil.id)
+      recargarPerfil()
+    }
+  }, [perfil, recargarPerfil])
 
   if (cargando) {
     return (
@@ -52,7 +81,7 @@ export default function App() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="text-slate-600">
-          {perfil ? 'Tu cuenta está desactivada. Habla con la encargada de la tienda.' : 'No encontramos tu perfil.'}
+          {perfil ? `Tu cuenta está desactivada. Habla con ${apariencia.nombre_encargada}.` : 'No encontramos tu perfil.'}
         </p>
         <button onClick={salir} className="btn-secundario">Cerrar sesión</button>
       </div>
@@ -62,7 +91,7 @@ export default function App() {
   const pestanas = [
     { id: 'menu', titulo: 'Menú', icono: '🛒' },
     { id: 'cuenta', titulo: 'Mi cuenta', icono: '👤', insignia: saldo > 0 ? dinero(saldo) : null },
-    ...(esPersonal(perfil) ? [{ id: 'admin', titulo: 'Admin', icono: '⚙️' }] : []),
+    ...(esPersonal(perfil) ? [{ id: 'admin', titulo: 'Admin', icono: '⚙️', insignia: pendientes > 0 ? String(pendientes) : null, alerta: true }] : []),
   ]
   const indice = Math.max(0, pestanas.findIndex((p) => p.id === vista))
 
@@ -94,9 +123,9 @@ export default function App() {
 
       <main key={vista} className="animar-entrada px-4">
         {vista === 'menu' && <Menu avisar={avisar} onCompra={refrescarSaldo} />}
-        {vista === 'cuenta' && <MiCuenta avisar={avisar} onCambio={refrescarSaldo} />}
+        {vista === 'cuenta' && <MiCuenta avisar={avisar} onCambio={refrescarSaldo} onTutorial={() => setTutorial(true)} />}
         {vista === 'admin' && esPersonal(perfil) && (
-          <Suspense fallback={<Cargando />}><Admin avisar={avisar} /></Suspense>
+          <Suspense fallback={<Cargando />}><Admin avisar={avisar} pendientes={pendientes} onPendientes={setPendientes} /></Suspense>
         )}
       </main>
 
@@ -111,7 +140,7 @@ export default function App() {
           {pestanas.map((p) => {
             const activa = vista === p.id
             return (
-              <button key={p.id} onClick={() => cambiarVista(p.id)} aria-current={activa ? 'page' : undefined}
+              <button key={p.id} data-tour={`nav-${p.id}`} onClick={() => cambiarVista(p.id)} aria-current={activa ? 'page' : undefined}
                 className={`relative flex flex-1 flex-col items-center gap-0.5 pb-2 pt-2.5 text-xs transition-colors ${
                   activa ? 'font-bold text-marca-texto' : 'font-medium text-slate-400'
                 }`}>
@@ -120,7 +149,8 @@ export default function App() {
                 }`}>
                   {p.icono}
                   {p.insignia && (
-                    <span className="absolute -right-3 -top-1.5 rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow">
+                    <span className={`absolute -right-3 -top-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow ${
+                      p.alerta ? 'animar-latido bg-amber-500' : 'bg-rose-600'}`}>
                       {p.insignia}
                     </span>
                   )}
@@ -131,6 +161,17 @@ export default function App() {
           })}
         </div>
       </nav>
+
+      {tutorial && (
+        <Tutorial
+          nombre={perfil.nombre.split(' ')[0]}
+          encargada={apariencia.nombre_encargada}
+          esPersonal={esPersonal(perfil)}
+          pagosClientes={apariencia.pagos_clientes}
+          setVista={setVista}
+          onFin={terminarTutorial}
+        />
+      )}
     </div>
   )
 }

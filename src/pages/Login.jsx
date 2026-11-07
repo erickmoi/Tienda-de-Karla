@@ -99,7 +99,7 @@ export default function Login() {
             {enviando ? 'Un momento…' : modo === 'entrar' ? 'Entrar' : 'Crear mi cuenta'}
           </button>
           {modo === 'entrar' && (
-            <p className="text-center text-xs text-slate-500">¿Olvidaste tu PIN? Pídele a la encargada que lo restablezca.</p>
+            <p className="text-center text-xs text-slate-500">¿Olvidaste tu PIN? Pídele a {apariencia.nombre_encargada} que lo restablezca.</p>
           )}
         </form>
       </div>

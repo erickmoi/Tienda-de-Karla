@@ -7,7 +7,7 @@ import { invocar, pinAleatorio } from '../../lib/funciones'
 
 const ROLES = {
   superadmin: 'Superadmin',
-  admin: 'Administradora',
+  admin: 'Administración',
   colaborador: 'Colaborador',
   cliente: 'Cliente',
 }
@@ -279,7 +279,7 @@ function EditarUsuario({ usuario, yo, avisar, onCerrar, onCambio }) {
             </div>
           )}
           {rol === 'admin' && (
-            <p className="text-sm text-slate-500">La administradora puede hacer todo en la tienda y nombrar colaboradores.</p>
+            <p className="text-sm text-slate-500">Puede hacer todo en la tienda y nombrar colaboradores.</p>
           )}
 
           <button onClick={guardarRol} disabled={guardando || !cambioRol} className="btn-primario w-full">

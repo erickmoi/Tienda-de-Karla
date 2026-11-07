@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { useApariencia } from '../lib/apariencia'
+import { useApariencia, useEncargada } from '../lib/apariencia'
 import { dinero, mensajeError } from '../lib/format'
 import { vibrar } from '../lib/tema'
 import { Contador, Exito, Hoja, Vacio } from '../components/ui'
+import { FormaDePago } from '../components/ListaCompras'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
@@ -28,6 +29,10 @@ export default function Menu({ avisar, onCompra }) {
   const [registrando, setRegistrando] = useState(false)
   const [exito, setExito] = useState(null)
   const [pop, setPop] = useState({ id: null, n: 0 })
+  const [pagado, setPagado] = useState(false)
+  const [metodo, setMetodo] = useState('efectivo')
+  const [referencia, setReferencia] = useState('')
+  const encargada = useEncargada()
 
   const cargar = useCallback(async () => {
     const [c, p, u] = await Promise.all([
@@ -85,8 +90,12 @@ export default function Menu({ avisar, onCompra }) {
 
   async function registrar() {
     setRegistrando(true)
+    const conPago = pagado && apariencia.pagos_clientes
     const { error } = await supabase.rpc('registrar_compra', {
       p_items: items.map((i) => ({ producto_id: i.producto.id, cantidad: i.cantidad })),
+      p_pagado: conPago,
+      p_metodo: metodo,
+      p_referencia: conPago && metodo === 'transferencia' ? referencia || null : null,
     })
     setRegistrando(false)
     if (error) {
@@ -95,8 +104,12 @@ export default function Menu({ avisar, onCompra }) {
       return
     }
     vibrar([20, 40, 20])
-    setExito({ texto: '¡Registrado!', sub: `${dinero(total)} a tu cuenta. ¡Buen provecho!` })
+    setExito(conPago
+      ? { texto: '¡Registrado!', sub: `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.` }
+      : { texto: '¡Registrado!', sub: `${dinero(total)} a tu cuenta. ¡Buen provecho!` })
     setCarrito({})
+    setPagado(false)
+    setReferencia('')
     setVerCarrito(false)
     cargar()
     onCompra?.()
@@ -115,7 +128,7 @@ export default function Menu({ avisar, onCompra }) {
 
       {/* Categorías */}
       {!busqueda && (
-        <div className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
+        <div data-tour="categorias" className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 flex gap-2 overflow-x-auto bg-slate-50 px-4 py-2 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
           {[{ id: 'todas', nombre: 'Todo' }, ...categorias].map((c) => (
             <button
               key={c.id}
@@ -149,10 +162,11 @@ export default function Menu({ avisar, onCompra }) {
         <Vacio>{busqueda ? 'No encontramos ese producto.' : 'No hay productos aquí todavía.'}</Vacio>
       ) : (
         <div key={`${catActiva}-${busqueda ? 'b' : ''}`} className={`escalonado grid gap-3 ${GRID[columnas] ?? GRID[2]}`}>
-          {visibles.map((p) => (
+          {visibles.map((p, i) => (
             <TarjetaProducto
               key={p.id}
               p={p}
+              tour={i === 0}
               lista={columnas === 1}
               compacta={columnas === 3}
               enCarrito={carrito[p.id] || 0}
@@ -203,10 +217,33 @@ export default function Menu({ avisar, onCompra }) {
             <span>Total</span>
             <span className="tabular-nums">{dinero(total)}</span>
           </div>
+          {apariencia.pagos_clientes && (
+            <div className="mt-4 space-y-3">
+              <p className="etiqueta">¿Cómo queda?</p>
+              <div className="relative grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
+                <span aria-hidden="true"
+                  className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-superficie shadow transition-transform duration-300"
+                  style={{ transform: pagado ? 'translateX(100%)' : 'none' }} />
+                <button type="button" onClick={() => setPagado(false)}
+                  className={`relative py-2.5 ${!pagado ? 'text-marca-texto' : 'text-slate-500'}`}>📒 A mi cuenta</button>
+                <button type="button" onClick={() => setPagado(true)}
+                  className={`relative py-2.5 ${pagado ? 'text-marca-texto' : 'text-slate-500'}`}>💵 Ya pagué</button>
+              </div>
+              {pagado && (
+                <div className="animar-entrada">
+                  <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia} />
+                </div>
+              )}
+            </div>
+          )}
           <button onClick={registrar} disabled={registrando || totalUnidades === 0} className="btn-primario mt-4 w-full">
-            {registrando ? 'Registrando…' : 'Registrar compra'}
+            {registrando ? 'Registrando…' : pagado && apariencia.pagos_clientes ? 'Registrar y avisar pago' : 'Registrar compra'}
           </button>
-          <p className="mt-2 text-center text-xs text-slate-500">Se suma a tu cuenta. Podrás borrarla por unos minutos si te equivocas.</p>
+          <p className="mt-2 text-center text-xs text-slate-500">
+            {pagado && apariencia.pagos_clientes
+              ? `El pago se aplica cuando ${encargada} lo apruebe.`
+              : 'Se suma a tu cuenta. Podrás borrarla por unos minutos si te equivocas.'}
+          </p>
         </Hoja>
       )}
 
@@ -215,7 +252,7 @@ export default function Menu({ avisar, onCompra }) {
   )
 }
 
-function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar }) {
+function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar, tour }) {
   const foto = (
     <span key={pop} className={`flex items-center justify-center overflow-hidden rounded-xl bg-marca-claro ${pop ? 'animar-pop' : ''} ${
       lista ? 'h-14 w-14 shrink-0 text-2xl' : `mb-2 aspect-square w-full ${compacta ? 'text-2xl' : 'text-4xl'}`
@@ -236,11 +273,12 @@ function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar }) {
   )
 
   const marcado = enCarrito > 0 ? 'ring-2 ring-marca' : ''
+  const tourAttr = tour ? { 'data-tour': 'producto' } : {}
   const apagado = p.agotado ? 'opacity-50 grayscale' : ''
 
   if (lista) {
     return (
-      <div className={`tarjeta flex items-center gap-3 p-2.5 transition ${marcado} ${apagado}`}>
+      <div {...tourAttr} className={`tarjeta flex items-center gap-3 p-2.5 transition ${marcado} ${apagado}`}>
         {foto}
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-slate-800">{p.nombre}</p>
@@ -252,7 +290,7 @@ function TarjetaProducto({ p, lista, compacta, enCarrito, pop, onCambiar }) {
   }
 
   return (
-    <div className={`tarjeta flex flex-col p-3 transition ${marcado} ${apagado}`}>
+    <div {...tourAttr} className={`tarjeta flex flex-col p-3 transition ${marcado} ${apagado}`}>
       {foto}
       <p className={`line-clamp-2 font-semibold text-slate-800 ${compacta ? 'min-h-8 text-xs' : 'min-h-10 text-sm'}`}>{p.nombre}</p>
       <p className={`mb-2 font-bold text-marca-texto ${compacta ? 'text-sm' : ''}`}>{dinero(p.precio)}</p>

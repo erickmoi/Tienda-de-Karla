@@ -8,10 +8,10 @@ import Usuarios from './Usuarios'
 import Ajustes from './Ajustes'
 import Bitacora from './Bitacora'
 
-export default function Admin({ avisar }) {
+export default function Admin({ avisar, pendientes = 0, onPendientes }) {
   const { perfil } = useAuth()
   const secciones = [
-    { id: 'deudores', titulo: '💵 Deudores', ver: puede(perfil, 'deudores') || puede(perfil, 'pagos'), C: Deudores },
+    { id: 'deudores', titulo: '💵 Deudores', insignia: pendientes, ver: puede(perfil, 'deudores') || puede(perfil, 'pagos'), C: Deudores },
     { id: 'productos', titulo: '🏷️ Productos', ver: puede(perfil, 'productos') || puede(perfil, 'inventario'), C: Productos },
     { id: 'estadisticas', titulo: '📊 Estadísticas', ver: puede(perfil, 'estadisticas'), C: Estadisticas },
     { id: 'usuarios', titulo: '👥 Usuarios', ver: puede(perfil, 'usuarios'), C: Usuarios },
@@ -33,11 +33,14 @@ export default function Admin({ avisar }) {
               actual.id === s.id ? 'scale-105 bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
             }`}>
             {s.titulo}
+            {s.insignia > 0 && (
+              <span className="ml-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{s.insignia}</span>
+            )}
           </button>
         ))}
       </div>
       <div key={actual.id} className="animar-entrada">
-        <Actual avisar={avisar} />
+        <Actual avisar={avisar} onPendientes={onPendientes} />
       </div>
     </div>
   )

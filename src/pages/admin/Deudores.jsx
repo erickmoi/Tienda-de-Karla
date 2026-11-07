@@ -3,7 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
-import ListaCompras, { ListaPagos, SELECT_COMPRAS, SELECT_PAGOS } from '../../components/ListaCompras'
+import ListaCompras, { ListaPagos, SELECT_COMPRAS, SELECT_PAGOS, SELECT_REPORTES } from '../../components/ListaCompras'
+import { fecha } from '../../lib/format'
+import { vibrar } from '../../lib/tema'
 import { useApariencia } from '../../lib/apariencia'
 import { invocar } from '../../lib/funciones'
 
@@ -14,17 +16,28 @@ function enlaceWhatsApp(cliente, telefono, tienda) {
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`
 }
 
-export default function Deudores({ avisar }) {
+export default function Deudores({ avisar, onPendientes }) {
+  const { perfil } = useAuth()
+  const puedeAprobar = puede(perfil, 'pagos')
   const [saldos, setSaldos] = useState(null)
+  const [pendientes, setPendientes] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [soloDeudores, setSoloDeudores] = useState(true)
   const [abierto, setAbierto] = useState(null)
 
   const cargar = useCallback(async () => {
-    const { data, error } = await supabase.rpc('obtener_saldos')
-    if (error) return avisar('error', mensajeError(error))
-    setSaldos(data.map((s) => ({ ...s, saldo: Number(s.saldo) })))
-  }, [avisar])
+    const [s, r] = await Promise.all([
+      supabase.rpc('obtener_saldos'),
+      puedeAprobar
+        ? supabase.from('reportes_pago').select(`${SELECT_REPORTES}, usuario_id`).eq('estado', 'pendiente')
+            .order('created_at')
+        : Promise.resolve({ data: [] }),
+    ])
+    if (s.error || r.error) return avisar('error', mensajeError(s.error || r.error))
+    setSaldos(s.data.map((x) => ({ ...x, saldo: Number(x.saldo) })))
+    setPendientes(r.data ?? [])
+    onPendientes?.(r.data?.length ?? 0)
+  }, [avisar, puedeAprobar, onPendientes])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -41,15 +54,21 @@ export default function Deudores({ avisar }) {
   const totalPorCobrar = saldos.reduce((s, x) => s + Math.max(0, x.saldo), 0)
   const totalAFavor = saldos.reduce((s, x) => s + Math.max(0, -x.saldo), 0)
 
+  const nombreDe = Object.fromEntries(saldos.map((x) => [x.usuario_id, x.nombre]))
+
   return (
     <div className="space-y-4">
+      {pendientes.length > 0 && (
+        <PorAprobar pendientes={pendientes} nombreDe={nombreDe} avisar={avisar} onCambio={cargar} />
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div className="tarjeta">
           <p className="text-xs text-slate-500">Por cobrar</p>
           <p className="text-2xl font-bold text-rose-600">{dinero(totalPorCobrar)}</p>
         </div>
         <div className="tarjeta">
-          <p className="text-xs text-slate-500">Saldos a favor</p>
+          <p className="text-xs text-slate-500">Créditos a favor</p>
           <p className="text-2xl font-bold text-emerald-600">{dinero(totalAFavor)}</p>
         </div>
       </div>
@@ -195,7 +214,7 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
       {puedePagar && (
         <form onSubmit={registrarPago} className="mb-5 space-y-3 rounded-2xl bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
-            {[['pago', 'Recibir pago'], ['devolucion', 'Devolver saldo']].map(([k, t]) => (
+            {[['pago', 'Recibir pago o crédito'], ['devolucion', 'Devolver crédito']].map(([k, t]) => (
               <button type="button" key={k} onClick={() => setTipo(k)}
                 className={`rounded-lg py-2 ${tipo === k ? 'bg-marca text-sobre-marca' : 'bg-superficie ring-1 ring-slate-200'}`}>
                 {t}
@@ -249,5 +268,59 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
         <ListaPagos pagos={datos.pagos} />
       )}
     </Hoja>
+  )
+}
+
+// Pagos y créditos que reportaron los clientes, esperando aprobación
+function PorAprobar({ pendientes, nombreDe, avisar, onCambio }) {
+  const [ocupado, setOcupado] = useState(null)
+
+  async function revisar(r, aprobar) {
+    let nota = null
+    if (!aprobar) {
+      nota = prompt('¿Por qué no lo apruebas? (opcional, le llegará a la persona)')
+      if (nota === null) return
+    }
+    setOcupado(r.id)
+    const { error } = await supabase.rpc('revisar_reporte', { p_id: r.id, p_aprobar: aprobar, p_nota: nota || null })
+    setOcupado(null)
+    if (error) return avisar('error', mensajeError(error))
+    vibrar(15)
+    avisar('ok', aprobar ? `Aprobado: ${dinero(r.monto)} de ${nombreDe[r.usuario_id] ?? 'cliente'}.` : 'Pago rechazado.')
+    onCambio()
+  }
+
+  return (
+    <section className="animar-entrada rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+      <h3 className="mb-2 flex items-center gap-2 font-bold text-amber-800">
+        <span className="animar-latido inline-block">⏳</span> Por aprobar ({pendientes.length})
+      </h3>
+      <ul className="space-y-2">
+        {pendientes.map((r) => (
+          <li key={r.id} className="tarjeta p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-900">{nombreDe[r.usuario_id] ?? 'Cliente'}</p>
+                <p className="text-xs text-slate-500">
+                  {fecha(r.created_at)} · {r.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                  {r.referencia ? ` · Ref. ${r.referencia}` : ''}
+                </p>
+                <p className="text-xs text-slate-500">{r.compra_id ? 'Pagó una compra al registrarla' : 'Abono o crédito'}</p>
+              </div>
+              <p className="shrink-0 text-lg font-bold text-slate-900">{dinero(r.monto)}</p>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button disabled={ocupado === r.id} onClick={() => revisar(r, false)} className="btn-peligro py-1.5 text-sm">
+                Rechazar
+              </button>
+              <button disabled={ocupado === r.id} onClick={() => revisar(r, true)}
+                className="btn bg-emerald-600 py-1.5 text-sm text-white">
+                ✓ Aprobar
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

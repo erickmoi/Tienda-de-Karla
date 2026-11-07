@@ -51,6 +51,8 @@ export default function Ajustes({ avisar }) {
 
       const { error } = await supabase.from('ajustes').update({
         nombre_tienda: f.nombre_tienda.trim() || 'Tienda de Karla',
+        nombre_encargada: f.nombre_encargada.trim() || 'Karla',
+        pagos_clientes: f.pagos_clientes,
         frase: f.frase.trim(),
         emoji: f.emoji || '🍿',
         logo_url,
@@ -93,6 +95,12 @@ export default function Ajustes({ avisar }) {
           <label className="etiqueta" htmlFor="anombre">Nombre de la tienda</label>
           <input id="anombre" className="input" maxLength={60} value={f.nombre_tienda}
             onChange={(e) => set('nombre_tienda', e.target.value)} />
+        </div>
+        <div>
+          <label className="etiqueta" htmlFor="aencargada">Nombre de quien atiende la tienda</label>
+          <input id="aencargada" className="input" maxLength={40} value={f.nombre_encargada}
+            onChange={(e) => set('nombre_encargada', e.target.value)} />
+          <p className="mt-1 text-xs text-slate-500">Aparece en la app, por ejemplo: “Pídele a {f.nombre_encargada || 'Karla'} que lo restablezca”.</p>
         </div>
         <div>
           <label className="etiqueta" htmlFor="afrase">Frase de bienvenida</label>
@@ -171,8 +179,11 @@ export default function Ajustes({ avisar }) {
       {/* ---------- Cuentas ---------- */}
       <section className="tarjeta space-y-4">
         <h3 className="font-bold text-slate-900">💵 Cuentas</h3>
+        <Interruptor activo={f.pagos_clientes} onCambio={(v) => set('pagos_clientes', v)}
+          etiqueta="Clientes pueden avisar sus pagos"
+          ayuda={`Al comprar pueden marcar “Ya pagué” y agregar crédito. Nada se aplica hasta que ${f.nombre_encargada || 'Karla'} lo apruebe. Si se apaga, solo ${f.nombre_encargada || 'Karla'} registra pagos.`} />
         <Interruptor activo={f.permitir_saldo_favor} onCambio={(v) => set('permitir_saldo_favor', v)}
-          etiqueta="Permitir saldo a favor" ayuda="Aceptar pagos por adelantado que se descuentan en cada compra." />
+          etiqueta="Permitir crédito a favor" ayuda="Aceptar pagos por adelantado que se descuentan en cada compra." />
         <Interruptor activo={f.mostrar_deudas} onCambio={(v) => set('mostrar_deudas', v)}
           etiqueta="Mostrar deudas entre clientes" ayuda="Si se activa, todos podrán ver cuánto debe cada uno." />
         <div>

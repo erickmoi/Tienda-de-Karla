@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { dinero, fecha, mensajeError } from '../../lib/format'
 import { Cargando, Vacio } from '../../components/ui'
+import { useEncargada } from '../../lib/apariencia'
 
 const PAGINA = 50
 
@@ -16,9 +17,10 @@ const ICONOS = {
   crear_usuario: '🆕',
   restablecer_pin: '🔑',
   recordar_cobro: '🔔',
+  rechazar_pago: '❌',
 }
 
-const ROLES = { superadmin: 'superadmin', admin: 'administradora', colaborador: 'colaborador', cliente: 'cliente' }
+const ROLES = { superadmin: 'superadmin', admin: 'administración', colaborador: 'colaborador', cliente: 'cliente' }
 
 function describir(e, nombres) {
   const d = e.detalle ?? {}
@@ -54,6 +56,8 @@ function describir(e, nombres) {
       return `Creó la cuenta de ${d.nombre} (@${d.usuario})`
     case 'restablecer_pin':
       return `Restableció el PIN de ${d.nombre ?? quien(d.usuario_id)}`
+    case 'rechazar_pago':
+      return `Rechazó un pago de ${dinero(d.monto)} de ${quien(d.cliente_id)}${d.nota ? ` (${d.nota})` : ''}`
     case 'recordar_cobro':
       return `Recordó a ${quien(d.usuario_id)} su saldo de ${dinero(d.saldo)}`
     default:
@@ -62,6 +66,7 @@ function describir(e, nombres) {
 }
 
 export default function Bitacora({ avisar }) {
+  const encargada = useEncargada()
   const [filas, setFilas] = useState(null)
   const [nombres, setNombres] = useState({})
   const [hayMas, setHayMas] = useState(false)
@@ -98,7 +103,7 @@ export default function Bitacora({ avisar }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-slate-500">Quién hizo qué en la administración. Solo lo ven la administradora y el superadmin.</p>
+      <p className="text-sm text-slate-500">Quién hizo qué en la administración. Solo lo ven {encargada} y el superadmin.</p>
       {grupos.map((g) => (
         <section key={g.dia}>
           <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">{g.dia}</h3>

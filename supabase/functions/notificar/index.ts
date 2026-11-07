@@ -90,6 +90,29 @@ Deno.serve(async (req) => {
         return json({ ok: true, ...r })
       }
 
+      // Aviso a quienes administran con cierto permiso (p. ej. pagos por aprobar)
+      if (cuerpo.accion === 'admins') {
+        const ids = await idsAdministracion(String(cuerpo.permiso ?? 'pagos'))
+        const r = await enviar(ids, {
+          title: String(cuerpo.titulo ?? 'Tienda'),
+          body: String(cuerpo.cuerpo ?? ''),
+          url: String(cuerpo.url ?? '/'),
+          tag: cuerpo.tag ? String(cuerpo.tag) : undefined,
+        })
+        return json({ ok: true, ...r })
+      }
+
+      // Aviso a una persona (p. ej. su pago fue aprobado)
+      if (cuerpo.accion === 'usuario') {
+        const r = await enviar([String(cuerpo.usuario_id)], {
+          title: String(cuerpo.titulo ?? 'Tienda'),
+          body: String(cuerpo.cuerpo ?? ''),
+          url: String(cuerpo.url ?? '/'),
+          tag: cuerpo.tag ? String(cuerpo.tag) : undefined,
+        })
+        return json({ ok: true, ...r })
+      }
+
       if (cuerpo.accion === 'recordatorios') {
         const { data: aj } = await admin.from('ajustes')
           .select('recordatorio_activo, recordatorio_minimo, nombre_tienda').eq('id', 1).single()

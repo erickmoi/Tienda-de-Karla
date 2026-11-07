@@ -1,35 +1,44 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { dinero, mensajeError } from '../lib/format'
-import { aplicarModo } from '../lib/tema'
+import { useApariencia, useEncargada } from '../lib/apariencia'
+import { dinero, fecha, mensajeError } from '../lib/format'
+import { aplicarModo, vibrar } from '../lib/tema'
 import { activarPush, desactivarPush, estadoPush, necesitaInstalar } from '../lib/push'
 import { invocar } from '../lib/funciones'
-import { Cargando, Hoja, Interruptor } from '../components/ui'
-import ListaCompras, { ListaPagos, SELECT_COMPRAS, SELECT_PAGOS } from '../components/ListaCompras'
+import { Cargando, Exito, Hoja, Interruptor } from '../components/ui'
+import ListaCompras, {
+  FormaDePago, ListaPagos, SELECT_COMPRAS, SELECT_PAGOS, SELECT_REPORTES,
+} from '../components/ListaCompras'
 
-export default function MiCuenta({ avisar, onCambio }) {
+export default function MiCuenta({ avisar, onCambio, onTutorial }) {
   const { perfil } = useAuth()
+  const { apariencia } = useApariencia()
+  const encargada = useEncargada()
   const [datos, setDatos] = useState(null)
   const [pestana, setPestana] = useState('compras')
   const [ahora, setAhora] = useState(Date.now())
   const [verPerfil, setVerPerfil] = useState(false)
+  const [verCredito, setVerCredito] = useState(false)
 
   const cargar = useCallback(async () => {
-    const [saldo, compras, pagos, ajustes] = await Promise.all([
+    const [saldo, compras, pagos, reportes, ajustes] = await Promise.all([
       supabase.rpc('mi_saldo'),
       supabase.from('compras').select(SELECT_COMPRAS).eq('usuario_id', perfil.id)
         .order('created_at', { ascending: false }).limit(50),
       supabase.from('pagos').select(SELECT_PAGOS).eq('usuario_id', perfil.id)
         .order('created_at', { ascending: false }).limit(50),
+      supabase.from('reportes_pago').select(SELECT_REPORTES).eq('usuario_id', perfil.id)
+        .order('created_at', { ascending: false }).limit(20),
       supabase.from('ajustes').select('minutos_borrar').maybeSingle(),
     ])
-    const err = saldo.error || compras.error || pagos.error || ajustes.error
+    const err = saldo.error || compras.error || pagos.error || reportes.error || ajustes.error
     if (err) return avisar('error', mensajeError(err))
     setDatos({
       saldo: Number(saldo.data ?? 0),
       compras: compras.data,
       pagos: pagos.data,
+      reportes: reportes.data,
       minutos: ajustes.data?.minutos_borrar ?? 5,
     })
   }, [perfil.id, avisar])
@@ -55,6 +64,12 @@ export default function MiCuenta({ avisar, onCambio }) {
 
   const debe = datos.saldo > 0
   const aFavor = datos.saldo < 0
+  const enRevision = datos.reportes.filter((r) => r.estado === 'pendiente')
+  const totalRevision = enRevision.reduce((s, r) => s + Number(r.monto), 0)
+  // Rechazos de los últimos 7 días, para que la persona se entere
+  const rechazos = datos.reportes.filter(
+    (r) => r.estado === 'rechazado' && Date.now() - new Date(r.revisado_at ?? r.created_at).getTime() < 7 * 864e5,
+  )
 
   return (
     <div className="space-y-5 pb-28">
@@ -66,15 +81,35 @@ export default function MiCuenta({ avisar, onCambio }) {
         <div className="relative flex items-start justify-between">
           <div>
             <p className="text-sm opacity-90">Hola, {perfil.nombre.split(' ')[0]}</p>
-            <p className="mt-1 text-sm opacity-90">{debe ? 'Debes' : aFavor ? 'Saldo a favor' : 'Estás al día'}</p>
+            <p className="mt-1 text-sm opacity-90">{debe ? 'Debes' : aFavor ? 'Crédito a favor' : 'Estás al día'}</p>
             <p className="text-4xl font-bold tabular-nums">{dinero(Math.abs(datos.saldo))}</p>
+            {totalRevision > 0 && (
+              <p className="mt-1 text-sm opacity-90">⏳ {dinero(totalRevision)} en revisión por {encargada}</p>
+            )}
           </div>
-          <button onClick={() => setVerPerfil(true)}
+          <button data-tour="mi-perfil" onClick={() => setVerPerfil(true)}
             className="rounded-full bg-white/20 px-3 py-1.5 text-sm font-semibold backdrop-blur transition active:scale-95">
             ⚙️ Mi perfil
           </button>
         </div>
+        {apariencia.pagos_clientes && (
+          <button data-tour="agregar-credito" onClick={() => setVerCredito(true)}
+            className="relative mt-4 w-full rounded-xl bg-white py-2.5 text-sm font-bold text-slate-900 shadow transition active:scale-[0.98]">
+            {debe ? '💵 Ya pagué / Agregar crédito' : '➕ Agregar crédito'}
+          </button>
+        )}
       </div>
+
+      {rechazos.length > 0 && (
+        <div className="animar-entrada rounded-2xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
+          {rechazos.map((r) => (
+            <p key={r.id}>
+              ❌ {encargada} no aprobó tu pago de {dinero(r.monto)} del {fecha(r.created_at)}
+              {r.nota_revision ? `: ${r.nota_revision}` : '.'}
+            </p>
+          ))}
+        </div>
+      )}
 
       <div className="relative grid grid-cols-2 rounded-xl bg-slate-200/60 p-1 text-sm font-semibold">
         <span aria-hidden="true"
@@ -88,7 +123,7 @@ export default function MiCuenta({ avisar, onCambio }) {
         ))}
       </div>
 
-      <div key={pestana} className="animar-entrada">
+      <div key={pestana} className="animar-entrada space-y-2">
         {pestana === 'compras' ? (
           <ListaCompras
             compras={datos.compras}
@@ -104,17 +139,97 @@ export default function MiCuenta({ avisar, onCambio }) {
             }}
           />
         ) : (
-          <ListaPagos pagos={datos.pagos} />
+          <>
+            {enRevision.map((r) => (
+              <div key={r.id} className="tarjeta flex items-center justify-between p-3 ring-amber-200">
+                <div>
+                  <p className="text-xs text-slate-500">{fecha(r.created_at)}</p>
+                  <p className="text-sm text-slate-700">
+                    ⏳ En revisión · {r.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                    {r.compra_id ? ' · por una compra' : ''}
+                  </p>
+                </div>
+                <p className="font-bold text-amber-700">{dinero(r.monto)}</p>
+              </div>
+            ))}
+            <ListaPagos pagos={datos.pagos} />
+          </>
         )}
       </div>
 
-      {verPerfil && <MiPerfil avisar={avisar} onCerrar={() => setVerPerfil(false)} />}
+      {verPerfil && (
+        <MiPerfil avisar={avisar} onCerrar={() => setVerPerfil(false)}
+          onTutorial={() => { setVerPerfil(false); onTutorial?.() }} />
+      )}
+      {verCredito && (
+        <AgregarCredito saldo={datos.saldo} avisar={avisar} onCerrar={() => setVerCredito(false)}
+          onListo={() => { setVerCredito(false); cargar() }} />
+      )}
     </div>
   )
 }
 
-function MiPerfil({ avisar, onCerrar }) {
+function AgregarCredito({ saldo, avisar, onCerrar, onListo }) {
+  const encargada = useEncargada()
+  const [monto, setMonto] = useState(saldo > 0 ? saldo.toFixed(2) : '')
+  const [metodo, setMetodo] = useState('efectivo')
+  const [referencia, setReferencia] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const [exito, setExito] = useState(false)
+
+  const atajos = [...new Set([...(saldo > 0 ? [Number(saldo.toFixed(2))] : []), 1, 2, 5, 10])]
+
+  async function enviar(e) {
+    e.preventDefault()
+    const valor = Number(monto)
+    if (!(valor > 0)) return avisar('error', 'Escribe un monto mayor que cero.')
+    setEnviando(true)
+    const { error } = await supabase.rpc('reportar_pago', {
+      p_monto: valor, p_metodo: metodo, p_referencia: referencia || null,
+    })
+    setEnviando(false)
+    if (error) return avisar('error', mensajeError(error))
+    vibrar([20, 40, 20])
+    setExito(true)
+  }
+
+  if (exito) {
+    return <Exito texto="¡Enviado!" sub={`${encargada} lo revisará y se aplicará a tu cuenta.`} onFin={onListo} />
+  }
+
+  return (
+    <Hoja titulo={saldo > 0 ? 'Ya pagué / Agregar crédito' : 'Agregar crédito'} onCerrar={onCerrar}>
+      <form onSubmit={enviar} className="space-y-4">
+        <p className="text-sm text-slate-600">
+          Entrégale el dinero a {encargada} o haz la transferencia, y avísale aquí. Se aplica cuando {encargada} lo apruebe.
+          {saldo > 0 && <> Lo que pase de tu deuda queda como crédito a favor.</>}
+        </p>
+        <div>
+          <label className="etiqueta" htmlFor="cmonto">Monto ($)</label>
+          <input id="cmonto" className="input text-lg font-bold" type="number" inputMode="decimal" step="0.01" min="0.01" max="500"
+            value={monto} onChange={(e) => setMonto(e.target.value)} />
+          <div className="mt-2 flex flex-wrap gap-2">
+            {atajos.map((v, i) => (
+              <button key={v} type="button" onClick={() => setMonto(v.toFixed(2))}
+                className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700 active:scale-95">
+                {i === 0 && saldo > 0 ? `Todo (${dinero(v)})` : dinero(v)}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="etiqueta">¿Cómo pagaste?</p>
+          <FormaDePago metodo={metodo} setMetodo={setMetodo} referencia={referencia} setReferencia={setReferencia} />
+        </div>
+        <button disabled={enviando} className="btn-primario w-full">{enviando ? 'Enviando…' : `Avisar a ${encargada}`}</button>
+      </form>
+    </Hoja>
+  )
+}
+
+function MiPerfil({ avisar, onCerrar, onTutorial }) {
   const { perfil, recargarPerfil } = useAuth()
+  const encargada = useEncargada()
   const [nombre, setNombre] = useState(perfil.nombre)
   const [telefono, setTelefono] = useState(perfil.telefono ?? '')
   const [tema, setTema] = useState(perfil.tema ?? 'auto')
@@ -204,7 +319,7 @@ function MiPerfil({ avisar, onCerrar }) {
             <label className="etiqueta" htmlFor="mtel">WhatsApp (opcional)</label>
             <input id="mtel" className="input" inputMode="tel" placeholder="ej. 70001234" value={telefono}
               onChange={(e) => setTelefono(digitos(e.target.value, 15))} />
-            <p className="mt-1 text-xs text-slate-500">Para que la encargada pueda enviarte tu saldo por WhatsApp.</p>
+            <p className="mt-1 text-xs text-slate-500">Para que {encargada} pueda enviarte tu saldo por WhatsApp.</p>
           </div>
           <button disabled={ocupado} className="btn-primario w-full">Guardar datos</button>
         </form>
@@ -243,7 +358,7 @@ function MiPerfil({ avisar, onCerrar }) {
                 disabled={ocupado || push === 'cargando'}
                 onCambio={alternarPush}
                 etiqueta="Recibir avisos en este dispositivo"
-                ayuda="Recordatorios de saldo y avisos de la tienda."
+                ayuda="Pagos aprobados, recordatorios de saldo y avisos de la tienda."
               />
               {push === 'activo' && (
                 <button type="button" onClick={probar} className="btn-secundario w-full text-sm">Enviarme una prueba</button>
@@ -262,6 +377,10 @@ function MiPerfil({ avisar, onCerrar }) {
           </div>
           <button disabled={ocupado || pin.length < 6} className="btn-secundario w-full">Cambiar PIN</button>
         </form>
+
+        <button type="button" onClick={onTutorial} className="w-full py-2 text-sm font-semibold text-marca-texto">
+          🎓 Ver el tutorial otra vez
+        </button>
       </div>
     </Hoja>
   )
