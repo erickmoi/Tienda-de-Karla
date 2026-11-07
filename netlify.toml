@@ -9,3 +9,12 @@
   VITE_SUPABASE_URL = "https://yqjuqzmgzydfdaygafgq.supabase.co"
   VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3L-bruVwjYg8XgZxw6PyFg_9CRYSGA8"
   VITE_EMAIL_DOMAIN = "tienda.internal"
+
+# Seguridad. Al no permitir scripts en línea, también se bloquea
+# el distintivo "Powered by Netlify" del plan gratis.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqjuqzmgzydfdaygafgq.supabase.co; connect-src 'self' https://yqjuqzmgzydfdaygafgq.supabase.co wss://yqjuqzmgzydfdaygafgq.supabase.co; font-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
