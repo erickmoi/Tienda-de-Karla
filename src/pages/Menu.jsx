@@ -267,7 +267,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
 
       {/* Fila fija: lupa + "Lo de siempre" + promos + categorías */}
       <div data-tour="categorias"
-        className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-10 -mx-4 mb-3 bg-slate-50 px-4 py-1.5 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
+        className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-20 -mx-4 mb-3 bg-slate-50 px-4 py-1.5 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
         {buscando ? (
           <div className="animar-entrada flex items-center gap-2">
             <input ref={inputBusqueda} className="input py-2" type="search" placeholder="Buscar producto" value={busqueda}
@@ -508,7 +508,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
   // ---- Vista de lista: una fila delgada ----
   if (lista) {
     return (
-      <div {...tourAttr} className={`tarjeta flex items-center gap-3 p-2 transition ${marcado} ${apagado}`}>
+      <div {...tourAttr} className={`tarjeta relative isolate flex items-center gap-3 p-2 transition ${marcado} ${apagado}`}>
         {imagen('h-12 w-12 shrink-0 rounded-xl')}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-800">{p.nombre}</p>
@@ -524,7 +524,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
 
   // ---- Vista en cuadrícula: la foto llena la tarjeta y el texto va en una franja translúcida ----
   return (
-    <div {...tourAttr} className={`relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 transition ${
+    <div {...tourAttr} className={`relative isolate overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-200 transition ${
       compacta ? 'aspect-[4/5]' : 'aspect-[5/4]'} ${marcado} ${apagado}`}>
       {imagen('absolute inset-0 h-full w-full')}
       <span className={`absolute right-1.5 top-1.5 z-10 ${compacta ? 'origin-top-right scale-90' : ''}`}>{control}</span>
