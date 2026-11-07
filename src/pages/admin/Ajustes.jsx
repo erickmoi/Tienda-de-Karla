@@ -2,13 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { mensajeError } from '../../lib/format'
 import { useApariencia } from '../../lib/apariencia'
-import { aplicarColor, PALETAS } from '../../lib/tema'
+import { aplicarColor, PALETAS, vibrar } from '../../lib/tema'
 import { borrarFoto, prepararFoto, subirFoto } from '../../lib/fotos'
 import { Cargando, Interruptor } from '../../components/ui'
 import MetodosPago from './MetodosPago'
 
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 const horaTxt = (h) => (h === 24 ? '12:00 a. m. (medianoche)' : `${h % 12 || 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`)
+
+const PARTES = [
+  { id: 'apariencia', icono: '🎨', titulo: 'Apariencia', ayuda: 'Nombre, logo, color y cómo se ve el menú' },
+  { id: 'metodos', icono: '🏦', titulo: 'Métodos de pago', ayuda: 'Cuentas de banco y QR para transferir' },
+  { id: 'cuentas', icono: '💵', titulo: 'Pagos y límites', ayuda: 'Avisos de pago, crédito a favor y límite de deuda' },
+  { id: 'horario', icono: '🕐', titulo: 'Horario de la tienda', ayuda: 'Cuándo se puede comprar' },
+  { id: 'notificaciones', icono: '🔔', titulo: 'Notificaciones', ayuda: 'Recordatorios de saldo, quincena y agotados' },
+  { id: 'registro', icono: '👤', titulo: 'Registro de cuentas', ayuda: 'Quién puede crear cuenta' },
+]
 
 const igual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
@@ -20,6 +29,7 @@ export default function Ajustes({ avisar }) {
   const [original, setOriginal] = useState(null)
   const [logo, setLogo] = useState(null) // { archivo, vista } | { quitar: true }
   const [guardando, setGuardando] = useState(false)
+  const [parte, setParte] = useState(null)
 
   useEffect(() => {
     supabase.from('ajustes').select('*').maybeSingle().then(({ data, error }) => {
@@ -54,7 +64,7 @@ export default function Ajustes({ avisar }) {
   }
 
   async function guardar(e) {
-    e.preventDefault()
+    e?.preventDefault()
     setGuardando(true)
     try {
       let logo_url = f.logo_url
@@ -119,13 +129,53 @@ export default function Ajustes({ avisar }) {
   const vistaLogo = logo?.quitar ? null : logo?.vista ?? f.logo_url
   const personalizado = !PALETAS.some((p) => p.color.toLowerCase() === f.color_marca.toLowerCase())
 
+  const actual = PARTES.find((x) => x.id === parte)
+
+  // ---- Índice: lista de partes de Ajustes ----
+  if (!actual) {
+    return (
+      <div className="space-y-3">
+        <ul className="tarjeta divide-y divide-slate-100 p-0">
+          {PARTES.map((x) => (
+            <li key={x.id}>
+              <button type="button" onClick={() => { vibrar(6); setParte(x.id) }}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-slate-50">
+                <span className="text-2xl">{x.icono}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-900">{x.titulo}</span>
+                  <span className="block truncate text-xs text-slate-500">{x.ayuda}</span>
+                </span>
+                <span className="text-xl text-slate-300">›</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {pendientes && (
+          <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
+            <p className="mb-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-center text-xs font-semibold text-amber-900 shadow">
+              Tienes cambios sin guardar.
+            </p>
+            <button type="button" onClick={guardar} disabled={guardando} className="btn-primario w-full shadow-lg">
+              {guardando ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-    <MetodosPago avisar={avisar} />
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={() => setParte(null)} className="rounded-full px-2 py-1 text-sm font-semibold text-marca-texto">‹ Ajustes</button>
+      <h3 className="text-lg font-bold text-slate-900">{actual.icono} {actual.titulo}</h3>
+    </div>
+    {parte === 'metodos' && <MetodosPago avisar={avisar} />}
+    {parte !== 'metodos' && (
     <form onSubmit={guardar} className="space-y-4">
       {/* ---------- Apariencia ---------- */}
+      {parte === 'apariencia' && (
       <section className="tarjeta space-y-4">
-        <h3 className="font-bold text-slate-900">🎨 Apariencia</h3>
 
         <div>
           <label className="etiqueta" htmlFor="anombre">Nombre de la tienda</label>
@@ -214,10 +264,11 @@ export default function Ajustes({ avisar }) {
         </div>
         <p className="text-xs text-slate-500">El modo claro u oscuro lo elige cada persona en Mi cuenta → Mi perfil.</p>
       </section>
+      )}
 
       {/* ---------- Cuentas ---------- */}
+      {parte === 'cuentas' && (
       <section className="tarjeta space-y-4">
-        <h3 className="font-bold text-slate-900">💵 Cuentas</h3>
         <Interruptor activo={f.pagos_clientes} onCambio={(v) => set('pagos_clientes', v)}
           etiqueta="Clientes pueden avisar sus pagos"
           ayuda={`Al comprar pueden marcar “Ya pagué” y agregar crédito. Nada se aplica hasta que ${f.nombre_encargada || 'Karla'} lo apruebe. Si se apaga, solo ${f.nombre_encargada || 'Karla'} registra pagos.`} />
@@ -253,10 +304,11 @@ export default function Ajustes({ avisar }) {
           </div>
         )}
       </section>
+      )}
 
       {/* ---------- Registro ---------- */}
+      {parte === 'registro' && (
       <section className="tarjeta space-y-3">
-        <h3 className="font-bold text-slate-900">👤 Registro de cuentas</h3>
         <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
           {[['abierto', '🟢 Abierto'], ['aprobacion', '🟡 Con aprobación'], ['cerrado', '🔴 Cerrado']].map(([k, t]) => (
             <button key={k} type="button" onClick={() => set('registro', k)}
@@ -271,10 +323,11 @@ export default function Ajustes({ avisar }) {
           {f.registro === 'cerrado' && `Solo ${f.nombre_encargada || 'Karla'} crea cuentas, desde Usuarios → Crear cuenta.`}
         </p>
       </section>
+      )}
 
       {/* ---------- Horario ---------- */}
+      {parte === 'horario' && (
       <section className="tarjeta space-y-3">
-        <h3 className="font-bold text-slate-900">🕐 Horario de la tienda</h3>
         <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
           {[['siempre', 'Siempre abierta'], ['manual', 'Abrir/cerrar a mano'], ['horario', 'Por horario']].map(([k, t]) => (
             <button key={k} type="button" onClick={() => set('horario_modo', k)}
@@ -326,10 +379,11 @@ export default function Ajustes({ avisar }) {
           </div>
         )}
       </section>
+      )}
 
       {/* ---------- Notificaciones ---------- */}
+      {parte === 'notificaciones' && (
       <section className="tarjeta space-y-4">
-        <h3 className="font-bold text-slate-900">🔔 Notificaciones</h3>
         <Interruptor activo={f.recordatorio_activo} onCambio={(v) => set('recordatorio_activo', v)}
           etiqueta="Recordatorio semanal de saldo"
           ayuda={`Los ${DIAS[f.recordatorio_dia]} a las ${horaTxt(f.recordatorio_hora)}, a quienes deban y tengan los avisos activados.`} />
@@ -370,6 +424,7 @@ export default function Ajustes({ avisar }) {
         )}
         <p className="text-xs text-slate-500">Para recibirlas, activa los avisos en Mi cuenta → Mi perfil.</p>
       </section>
+      )}
 
       <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
         {pendientes && (
@@ -382,6 +437,7 @@ export default function Ajustes({ avisar }) {
         </button>
       </div>
     </form>
+    )}
     </div>
   )
 }

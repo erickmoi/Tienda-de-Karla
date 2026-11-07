@@ -41,7 +41,7 @@
 /* iOS 26 difumina una franja bajo la barra de estado en apps instaladas.
    Se deja una banda sólida de ese alto y el contenido empieza debajo. */
 :root { --espacio-arriba: 0px; }
-@media (display-mode: standalone) { :root { --espacio-arriba: 2.5rem; } }
+@media (display-mode: standalone) { :root { --espacio-arriba: 1.25rem; } }
 
 html, body, #root { min-height: 100%; }
 body {

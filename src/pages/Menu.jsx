@@ -32,7 +32,6 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const [categorias, setCategorias] = useState([])
   const [productos, setProductos] = useState(null)
   const [promos, setPromos] = useState([])
-  const [ultima, setUltima] = useState([])
   const [catActiva, setCatActiva] = useState('todas')
   const [buscando, setBuscando] = useState(false)
   const [busqueda, setBusqueda] = useState('')
@@ -54,18 +53,15 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const [antojos, setAntojos] = useState(null) // null = cerrado; texto inicial si está abierto
 
   const cargar = useCallback(async () => {
-    const [c, p, u, pr, f] = await Promise.all([
+    const [c, p, pr, f] = await Promise.all([
       supabase.from('categorias').select('id, nombre, orden, emoji').eq('activo', true).order('orden').order('nombre'),
       supabase.from('productos').select('id, nombre, precio, foto_url, stock, agotado, categoria_id').eq('activo', true),
-      supabase.from('compras').select('compra_items(producto_id, cantidad)').eq('usuario_id', perfil.id)
-        .eq('anulada', false).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       cargarPromos().catch(() => []),
       supabase.from('favoritos').select('producto_id').eq('usuario_id', perfil.id),
     ])
     if (c.error || p.error) return avisar('error', mensajeError(c.error || p.error))
     setCategorias(c.data)
     setProductos(p.data)
-    setUltima(u.data?.compra_items ?? [])
     setPromos(pr)
     if (!f.error) setFavoritos(new Set(f.data.map((x) => x.producto_id)))
   }, [avisar, perfil.id])
@@ -176,10 +172,6 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   const ahorro = descuentos.reduce((s, d) => s + d.descuento, 0)
   const total = Math.max(0, subtotal - ahorro)
 
-  const loDeSiempre = ultima
-    .map((i) => ({ producto: porId[i.producto_id], cantidad: i.cantidad }))
-    .filter((i) => i.producto && !i.producto.agotado)
-
   // Límite de deuda (aviso o bloqueo)
   const limite = perfil.limite_deuda ?? apariencia.limite_deuda
   const conLimite = limite != null && Number(limite) > 0
@@ -195,13 +187,6 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
     setCarrito((c) => ({ ...c, [id]: Math.max(0, (c[id] || 0) + delta) }))
   }
 
-  function repetir() {
-    vibrar(15)
-    const nuevo = {}
-    for (const { producto, cantidad } of loDeSiempre) nuevo[producto.id] = Math.min(cantidad, producto.stock)
-    setCarrito(nuevo)
-    setVerCarrito(true)
-  }
 
   async function registrar() {
     const conPago = pagado && apariencia.pagos_clientes
@@ -251,8 +236,6 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   if (!productos) return <EsqueletoMenu columnas={columnas} />
 
   const chips = [
-    ...(promos.length ? [{ id: 'promos', nombre: 'Promos', emoji: '🔥', promo: true }] : []),
-    ...(favoritos.size ? [{ id: 'favoritos', nombre: 'Favoritos', emoji: '⭐' }] : []),
     { id: 'todas', nombre: 'Todo', emoji: '✨' },
     ...categorias,
   ]
@@ -292,7 +275,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
         </p>
       )}
 
-      {/* Fila fija: lupa + "Lo de siempre" + promos + categorías */}
+      {/* Fila fija: buscar, favoritos y promos + categorías */}
       <div data-tour="categorias"
         className="sticky top-[calc(env(safe-area-inset-top)+var(--espacio-arriba))] z-20 -mx-4 mb-3 bg-slate-50 px-4 py-1.5 shadow-[0_6px_8px_-8px_rgba(0,0,0,0.25)]">
         {buscando ? (
@@ -303,26 +286,37 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
               className="shrink-0 px-2 text-sm font-semibold text-slate-500">Cerrar</button>
           </div>
         ) : (
-          <FilaDeslizable>
-            <button onClick={() => setBuscando(true)} aria-label="Buscar"
-              className="shrink-0 rounded-full bg-superficie px-3 py-1.5 ring-1 ring-slate-200">🔎</button>
-            {loDeSiempre.length > 0 && totalUnidades === 0 && (
-              <button onClick={repetir} title={loDeSiempre.map((i) => `${i.cantidad} × ${i.producto.nombre}`).join(', ')}
-                className="shrink-0 rounded-full bg-marca-claro px-3 py-1.5 text-sm font-semibold text-marca-texto">
-                🔁 Lo de siempre
-              </button>
-            )}
-            {chips.map((c) => (
-              <button key={c.id} onClick={() => { vibrar(6); setCatActiva(c.id) }}
-                className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-all duration-200 ${
-                  catActiva === c.id
-                    ? c.promo ? 'bg-orange-500 text-white shadow' : 'bg-marca text-sobre-marca shadow'
-                    : c.promo ? 'bg-orange-50 text-orange-700 ring-1 ring-orange-200' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
-                }`}>
-                {c.emoji} {c.nombre}
-              </button>
-            ))}
-          </FilaDeslizable>
+          <div className="flex items-center gap-1.5">
+            {/* Atajos fijos: buscar, favoritos y promos */}
+            {[
+              { id: 'buscar', icono: '🔎', nombre: 'Buscar' },
+              { id: 'favoritos', icono: '⭐', nombre: 'Favoritos' },
+              ...(promos.length ? [{ id: 'promos', icono: '🔥', nombre: 'Promos', promo: true }] : []),
+            ].map((a) => {
+              const activo = catActiva === a.id
+              return (
+                <button key={a.id} aria-label={a.nombre} aria-pressed={a.id === 'buscar' ? undefined : activo}
+                  onClick={() => { vibrar(6); if (a.id === 'buscar') setBuscando(true); else setCatActiva(activo ? 'todas' : a.id) }}
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition-all duration-200 ${
+                    activo ? (a.promo ? 'bg-orange-500 shadow' : 'bg-marca shadow') : a.promo ? 'bg-orange-50 ring-1 ring-orange-200' : 'bg-superficie ring-1 ring-slate-200'}`}>
+                  {a.icono}
+                </button>
+              )
+            })}
+            <span aria-hidden="true" className="mx-0.5 h-6 w-px shrink-0 bg-slate-200" />
+            <div className="min-w-0 flex-1">
+              <FilaDeslizable>
+                {chips.map((c) => (
+                  <button key={c.id} onClick={() => { vibrar(6); setCatActiva(c.id) }}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                      catActiva === c.id ? 'bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
+                    }`}>
+                    {c.emoji} {c.nombre}
+                  </button>
+                ))}
+              </FilaDeslizable>
+            </div>
+          </div>
         )}
       </div>
 
