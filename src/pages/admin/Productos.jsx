@@ -45,7 +45,7 @@ export default function Productos({ avisar }) {
       {productos.length === 0 ? (
         <Vacio>Aún no hay productos. Crea el primero.</Vacio>
       ) : (
-        <ul className="space-y-2">
+        <ul className="escalonado space-y-2">
           {productos.map((p) => (
             <li key={p.id} className={`tarjeta p-3 ${p.activo ? '' : 'opacity-50'}`}>
               <div className="flex items-start justify-between gap-2">
@@ -257,7 +257,7 @@ function FormInventario({ producto, avisar, onCerrar, onGuardado }) {
         <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
           {[['entrada', 'Llegó mercadería'], ['ajuste', 'Ajuste (±)']].map(([k, t]) => (
             <button type="button" key={k} onClick={() => setTipo(k)}
-              className={`rounded-lg py-2 ${tipo === k ? 'bg-marca text-white' : 'bg-white ring-1 ring-slate-200'}`}>
+              className={`rounded-lg py-2 ${tipo === k ? 'bg-marca text-sobre-marca' : 'bg-superficie ring-1 ring-slate-200'}`}>
               {t}
             </button>
           ))}
@@ -317,7 +317,7 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
             <li key={c.id} className="flex items-center justify-between gap-2 py-2">
               <span className={c.activo ? '' : 'text-slate-400 line-through'}>{c.nombre}</span>
               <div className="flex gap-2">
-                <button onClick={() => renombrar(c)} className="text-sm font-semibold text-marca">Renombrar</button>
+                <button onClick={() => renombrar(c)} className="text-sm font-semibold text-marca-texto">Renombrar</button>
                 <button onClick={() => alternar(c)} className="text-sm font-semibold text-slate-500">
                   {c.activo ? 'Ocultar' : 'Mostrar'}
                 </button>

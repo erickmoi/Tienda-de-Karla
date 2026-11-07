@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { supabase, emailDe, normalizarUsuario } from '../lib/supabase'
 import { mensajeError } from '../lib/format'
+import { Logo, useApariencia } from '../lib/apariencia'
 
 export default function Login() {
+  const { apariencia } = useApariencia()
   const [modo, setModo] = useState('entrar') // 'entrar' | 'crear'
   const [usuario, setUsuario] = useState('')
   const [nombre, setNombre] = useState('')
@@ -44,12 +46,12 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-marca to-indigo-700 px-4">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
-        <div className="mb-6 text-center">
-          <div className="text-4xl">🍿</div>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">Tienda de Karla</h1>
-          <p className="text-sm text-slate-500">Anota lo que tomas y paga después</p>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-marca to-marca-oscuro px-4">
+      <div className="animar-entrada w-full max-w-sm rounded-3xl bg-superficie p-6 shadow-xl">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <Logo className="animar-pop h-16 w-16 text-5xl" />
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">{apariencia.nombre_tienda}</h1>
+          <p className="text-sm text-slate-500">{apariencia.frase}</p>
         </div>
 
         <div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
@@ -57,7 +59,7 @@ export default function Login() {
             <button
               key={m}
               onClick={() => { setModo(m); setError('') }}
-              className={`rounded-lg py-2 ${modo === m ? 'bg-white text-marca shadow' : 'text-slate-500'}`}
+              className={`rounded-lg py-2 ${modo === m ? 'bg-superficie text-marca-texto shadow' : 'text-slate-500'}`}
             >
               {m === 'entrar' ? 'Entrar' : 'Crear cuenta'}
             </button>

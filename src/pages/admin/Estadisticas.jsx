@@ -43,7 +43,7 @@ export default function Estadisticas({ avisar }) {
         {RANGOS.map((r) => (
           <button key={r.id} onClick={() => setRango(r.id)}
             className={`shrink-0 rounded-full px-3 py-1 text-sm font-semibold ${
-              rango === r.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'
+              rango === r.id ? 'bg-slate-800 text-slate-50' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
             }`}>
             {r.titulo}
           </button>

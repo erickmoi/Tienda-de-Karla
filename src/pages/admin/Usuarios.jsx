@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { fecha, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
+import { invocar, pinAleatorio } from '../../lib/funciones'
 
 const ROLES = {
   superadmin: 'Superadmin',
@@ -27,6 +28,7 @@ export default function Usuarios({ avisar }) {
   const [usuarios, setUsuarios] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [abierto, setAbierto] = useState(null)
+  const [creando, setCreando] = useState(false)
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase
@@ -51,11 +53,14 @@ export default function Usuarios({ avisar }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500">{usuarios.length} cuentas registradas</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">{usuarios.length} cuentas registradas</p>
+        <button onClick={() => setCreando(true)} className="btn-primario py-2 text-sm">+ Crear cuenta</button>
+      </div>
       <input className="input" placeholder="Buscar por nombre o usuario" value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)} />
       {lista.length === 0 ? <Vacio>Nadie coincide.</Vacio> : (
-        <ul className="space-y-2">
+        <ul className="escalonado space-y-2">
           {lista.map((u) => (
             <li key={u.id}>
               <button onClick={() => setAbierto(u)} disabled={u.id === yo.id || u.rol === 'superadmin'}
@@ -65,7 +70,7 @@ export default function Usuarios({ avisar }) {
                   <p className="text-xs text-slate-500">@{u.usuario}{!u.activo && ' · Desactivado'}</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  u.rol === 'cliente' ? 'bg-slate-100 text-slate-600' : 'bg-marca-claro text-marca'
+                  u.rol === 'cliente' ? 'bg-slate-100 text-slate-600' : 'bg-marca-claro text-marca-texto'
                 }`}>
                   {ROLES[u.rol]}
                 </span>
@@ -80,7 +85,119 @@ export default function Usuarios({ avisar }) {
           onCerrar={() => setAbierto(null)}
           onCambio={() => { setAbierto(null); cargar() }} />
       )}
+      {creando && (
+        <CrearCuenta avisar={avisar} onCerrar={() => setCreando(false)}
+          onCreada={() => { setCreando(false); cargar() }} />
+      )}
     </div>
+  )
+}
+
+function CrearCuenta({ avisar, onCerrar, onCreada }) {
+  const [usuario, setUsuario] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [pin, setPin] = useState(pinAleatorio)
+  const [creada, setCreada] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+
+  async function crear(e) {
+    e.preventDefault()
+    setGuardando(true)
+    try {
+      const u = usuario.trim().toLowerCase()
+      await invocar('admin-usuarios', { accion: 'crear', usuario: u, nombre: nombre.trim(), pin })
+      setCreada({ usuario: u, nombre: nombre.trim(), pin })
+    } catch (err) {
+      avisar('error', err.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  if (creada) {
+    return (
+      <Hoja titulo="Cuenta creada" onCerrar={onCreada}>
+        <div className="animar-entrada space-y-3 text-center">
+          <p className="text-5xl">🎉</p>
+          <p className="text-slate-700">Pásale estos datos a <b>{creada.nombre}</b>:</p>
+          <div className="rounded-2xl bg-slate-100 p-4 text-left">
+            <p className="text-sm text-slate-500">Usuario</p>
+            <p className="font-mono text-lg font-bold text-slate-900">{creada.usuario}</p>
+            <p className="mt-2 text-sm text-slate-500">PIN</p>
+            <p className="font-mono text-2xl font-bold tracking-[0.3em] text-slate-900">{creada.pin}</p>
+          </div>
+          <p className="text-xs text-slate-500">Puede cambiar su PIN después en Mi cuenta → Mi perfil.</p>
+          <button onClick={onCreada} className="btn-primario w-full">Listo</button>
+        </div>
+      </Hoja>
+    )
+  }
+
+  return (
+    <Hoja titulo="Crear cuenta" onCerrar={onCerrar}>
+      <form onSubmit={crear} className="space-y-3">
+        <div>
+          <label className="etiqueta" htmlFor="cnombre">Nombre</label>
+          <input id="cnombre" className="input" maxLength={60} placeholder="ej. María López" value={nombre}
+            onChange={(e) => setNombre(e.target.value)} />
+        </div>
+        <div>
+          <label className="etiqueta" htmlFor="cusuario">Usuario</label>
+          <input id="cusuario" className="input" autoCapitalize="none" autoCorrect="off" placeholder="ej. maria.lopez"
+            value={usuario} onChange={(e) => setUsuario(e.target.value.replace(/\s/g, ''))} />
+        </div>
+        <div>
+          <label className="etiqueta" htmlFor="cpin">PIN temporal</label>
+          <div className="flex gap-2">
+            <input id="cpin" className="input font-mono tracking-[0.3em]" inputMode="numeric" value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+            <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 text-sm">🎲 Otro</button>
+          </div>
+        </div>
+        <button disabled={guardando || !nombre.trim() || usuario.length < 3 || pin.length !== 6} className="btn-primario w-full">
+          {guardando ? 'Creando…' : 'Crear cuenta'}
+        </button>
+      </form>
+    </Hoja>
+  )
+}
+
+function RestablecerPin({ usuario, avisar }) {
+  const [pin, setPin] = useState(pinAleatorio)
+  const [listo, setListo] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+
+  async function restablecer() {
+    if (!confirm(`¿Cambiar el PIN de ${usuario.nombre} a ${pin}?`)) return
+    setGuardando(true)
+    try {
+      await invocar('admin-usuarios', { accion: 'restablecer_pin', usuario_id: usuario.id, pin })
+      setListo(true)
+    } catch (err) {
+      avisar('error', err.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <section className="mb-5 rounded-2xl bg-slate-50 p-3">
+      <p className="mb-2 text-sm font-medium text-slate-600">🔑 Restablecer PIN</p>
+      {listo ? (
+        <p className="animar-entrada text-sm text-slate-700">
+          Listo. Nuevo PIN de {usuario.nombre.split(' ')[0]}: <b className="font-mono text-lg tracking-[0.2em]">{pin}</b>
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <input className="input font-mono tracking-[0.3em]" inputMode="numeric" value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
+          <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 px-3" aria-label="Generar otro">🎲</button>
+          <button type="button" onClick={restablecer} disabled={guardando || pin.length !== 6} className="btn-primario shrink-0 text-sm">
+            Cambiar
+          </button>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -96,6 +213,12 @@ function EditarUsuario({ usuario, yo, avisar, onCerrar, onCambio }) {
   const puedeCambiarRol = soyAdmin && (soySuper || usuario.rol !== 'admin')
   const cambioRol = rol !== usuario.rol ||
     (rol === 'colaborador' && [...permisos].sort().join() !== [...(usuario.permisos ?? [])].sort().join())
+
+  // Misma jerarquía que la función del servidor
+  const puedeResetear =
+    usuario.rol !== 'superadmin' &&
+    (usuario.rol !== 'admin' || soySuper) &&
+    (yo.rol !== 'colaborador' || usuario.rol === 'cliente')
 
   const alternarPermiso = (p) =>
     setPermisos((ps) => (ps.includes(p) ? ps.filter((x) => x !== p) : [...ps, p]))
@@ -132,6 +255,8 @@ function EditarUsuario({ usuario, yo, avisar, onCerrar, onCambio }) {
   return (
     <Hoja titulo={usuario.nombre} onCerrar={onCerrar}>
       <p className="mb-4 text-sm text-slate-500">@{usuario.usuario} · desde {fecha(usuario.created_at)}</p>
+
+      {puedeResetear && <RestablecerPin usuario={usuario} avisar={avisar} />}
 
       {puedeCambiarRol && (
         <div className="mb-5 space-y-3">

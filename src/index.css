@@ -1,35 +1,146 @@
 @import "tailwindcss";
 
+/* ---------- Colores de marca (se cambian en Ajustes → Apariencia) ---------- */
 @theme {
   --color-marca: #312e81;
-  --color-marca-claro: #eef2ff;
-  --color-acento: #f59e0b;
+  --color-sobre-marca: #ffffff;
+  --color-marca-texto: color-mix(in oklab, var(--color-marca) 88%, black);
+  --color-marca-claro: color-mix(in oklab, var(--color-marca) 12%, white);
+  --color-marca-oscuro: color-mix(in oklab, var(--color-marca) 70%, black);
+  --color-superficie: #ffffff;
+}
+
+/* ---------- Modo oscuro: se invierte la escala de grises ---------- */
+.dark {
+  color-scheme: dark;
+  --color-superficie: #121a2b;
+  --color-slate-50: #0a0f1c;
+  --color-slate-100: #1b2436;
+  --color-slate-200: #2a3549;
+  --color-slate-300: #3d4a61;
+  --color-slate-400: #64748b;
+  --color-slate-500: #94a3b8;
+  --color-slate-600: #b8c4d4;
+  --color-slate-700: #d5dde8;
+  --color-slate-800: #e8edf4;
+  --color-slate-900: #f4f7fb;
+  --color-marca-texto: color-mix(in oklab, var(--color-marca) 45%, white);
+  --color-marca-claro: color-mix(in oklab, var(--color-marca) 30%, #121a2b);
+  --color-red-50: #3a1418;
+  --color-red-200: #6b2028;
+  --color-red-700: #fca5a5;
+  --color-amber-700: #fbbf24;
+  --color-emerald-700: #6ee7b7;
+  --color-amber-50: #33270b;
+  --color-amber-800: #fcd34d;
 }
 
 html, body, #root { min-height: 100%; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  background: var(--color-slate-50);
+  color: var(--color-slate-900);
+  transition: background-color 0.3s ease;
 }
 
 @utility btn {
-  @apply rounded-xl px-4 py-2.5 font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100;
+  @apply rounded-xl px-4 py-2.5 font-semibold transition active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100;
 }
 @utility btn-primario {
-  @apply btn bg-marca text-white;
+  @apply btn bg-marca text-sobre-marca shadow-sm;
 }
 @utility btn-secundario {
-  @apply btn bg-white text-marca ring-1 ring-slate-200;
+  @apply btn bg-superficie text-marca-texto ring-1 ring-slate-200;
 }
 @utility btn-peligro {
   @apply btn bg-red-50 text-red-700 ring-1 ring-red-200;
 }
 @utility input {
-  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base outline-none focus:border-marca focus:ring-2 focus:ring-marca/20;
+  @apply w-full rounded-xl border border-slate-300 bg-superficie px-3 py-2.5 text-base text-slate-900 outline-none placeholder:text-slate-400 focus:border-marca focus:ring-2 focus:ring-marca/20;
 }
 @utility tarjeta {
-  @apply rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200;
+  @apply rounded-2xl bg-superficie p-4 shadow-sm ring-1 ring-slate-200;
 }
 @utility etiqueta {
   @apply mb-1 block text-sm font-medium text-slate-600;
+}
+
+/* ---------- Animaciones ---------- */
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes aparecer { from { opacity: 0; } }
+@keyframes subir-hoja { from { transform: translateY(100%); } }
+@keyframes zoom-hoja { from { opacity: 0; transform: scale(0.95); } }
+@keyframes pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.18) rotate(-4deg); }
+  70% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+@keyframes rebote {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
+  60% { transform: translateY(2px); }
+}
+@keyframes brillo { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes caer {
+  0% { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(var(--dx, 0), 105vh, 0) rotate(var(--rot, 540deg)); opacity: 0.9; }
+}
+@keyframes trazo { to { stroke-dashoffset: 0; } }
+@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+/* "backwards": al terminar no deja transform, así los elementos fijos (carrito, ventanas) quedan bien */
+.animar-entrada { animation: entrar 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.animar-fondo { animation: aparecer 0.2s ease-out both; }
+.animar-hoja { animation: subir-hoja 0.32s cubic-bezier(0.2, 0.9, 0.25, 1) both; }
+@media (min-width: 640px) { .animar-hoja { animation-name: zoom-hoja; } }
+.animar-pop { animation: pop 0.38s ease-out; }
+.animar-rebote { animation: rebote 0.45s ease-out; }
+.animar-latido { animation: latido 1.6s ease-in-out infinite; }
+
+/* Lista con entrada escalonada */
+.escalonado > * { animation: entrar 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards; }
+.escalonado > *:nth-child(2) { animation-delay: 30ms; }
+.escalonado > *:nth-child(3) { animation-delay: 60ms; }
+.escalonado > *:nth-child(4) { animation-delay: 90ms; }
+.escalonado > *:nth-child(5) { animation-delay: 120ms; }
+.escalonado > *:nth-child(6) { animation-delay: 150ms; }
+.escalonado > *:nth-child(n + 7) { animation-delay: 180ms; }
+
+/* Esqueletos de carga */
+.esqueleto {
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, var(--color-slate-100) 25%, var(--color-slate-200) 50%, var(--color-slate-100) 75%);
+  background-size: 200% 100%;
+  animation: brillo 1.4s ease-in-out infinite;
+}
+
+/* Confeti y check de éxito */
+.confeti {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: caer 1.5s cubic-bezier(0.25, 0.6, 0.4, 1) forwards;
+}
+.check-trazo {
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: trazo 0.4s 0.15s ease-out forwards;
+}
+
+/* Quien pidió reducir movimiento en su celular no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .confeti { display: none; }
 }

@@ -5,7 +5,7 @@ import { Vacio } from './ui'
 export default function ListaCompras({ compras, accion }) {
   if (!compras.length) return <Vacio>Sin compras registradas.</Vacio>
   return (
-    <ul className="space-y-2">
+    <ul className="escalonado space-y-2">
       {compras.map((c) => (
         <li key={c.id} className={`tarjeta p-3 ${c.anulada ? 'opacity-50' : ''}`}>
           <div className="flex items-start justify-between gap-2">
@@ -32,7 +32,7 @@ export default function ListaCompras({ compras, accion }) {
 export function ListaPagos({ pagos }) {
   if (!pagos.length) return <Vacio>Sin pagos registrados.</Vacio>
   return (
-    <ul className="space-y-2">
+    <ul className="escalonado space-y-2">
       {pagos.map((p) => (
         <li key={p.id} className="tarjeta flex items-center justify-between p-3">
           <div>

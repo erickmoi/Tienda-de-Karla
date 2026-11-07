@@ -1,6 +1,6 @@
-// Service worker mínimo: hace la app instalable y abre rápido.
+// Service worker: hace la app instalable, abre rápido y muestra notificaciones.
 // Solo guarda los archivos de la app; los datos (Supabase) siempre van a la red.
-const CACHE = 'tienda-v2'
+const CACHE = 'tienda-v3'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -45,4 +45,32 @@ self.addEventListener('fetch', (event) => {
       ),
     )
   }
+})
+
+// ---------- Notificaciones ----------
+self.addEventListener('push', (event) => {
+  let d = {}
+  try { d = event.data?.json() ?? {} } catch { d = { body: event.data?.text() } }
+  event.waitUntil(
+    self.registration.showNotification(d.title || 'Tienda', {
+      body: d.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: d.tag,
+      renotify: !!d.tag,
+      data: { url: d.url || '/' },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const destino = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((v) => new URL(v.url).origin === self.location.origin)
+      if (abierta) return abierta.focus().then((v) => v.navigate?.(destino))
+      return self.clients.openWindow(destino)
+    }),
+  )
 })

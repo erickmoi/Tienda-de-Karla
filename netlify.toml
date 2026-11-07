@@ -9,6 +9,7 @@
   VITE_SUPABASE_URL = "https://yqjuqzmgzydfdaygafgq.supabase.co"
   VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3L-bruVwjYg8XgZxw6PyFg_9CRYSGA8"
   VITE_EMAIL_DOMAIN = "tienda.internal"
+  VITE_VAPID_PUBLIC_KEY = "BC6YcXEGoerIZ8Mtii6DSl1ocd5tLCErl5wp1XrxwJiG2sxgTUGkSO5iU59PBcGFqLorGd-H5ojR5j50AQzN8Uo"
 
 # Seguridad. Al no permitir scripts en línea, también se bloquea
 # el distintivo "Powered by Netlify" del plan gratis.

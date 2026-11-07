@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { supabase } from './supabase'
+import { aplicarModo } from './tema'
+import { desactivarPush } from './push'
 
 const AuthContext = createContext(null)
 
@@ -23,7 +25,7 @@ export function AuthProvider({ children }) {
     setCargandoPerfil(true)
     const { data } = await supabase
       .from('perfiles')
-      .select('id, usuario, nombre, rol, permisos, activo')
+      .select('id, usuario, nombre, rol, permisos, activo, tema, telefono')
       .eq('id', session.user.id)
       .maybeSingle()
     setPerfil(data)
@@ -34,7 +36,15 @@ export function AuthProvider({ children }) {
     cargarPerfil()
   }, [cargarPerfil])
 
-  const salir = () => supabase.auth.signOut()
+  // El modo claro/oscuro sigue la preferencia guardada del usuario
+  useEffect(() => {
+    if (perfil?.tema) aplicarModo(perfil.tema)
+  }, [perfil?.tema])
+
+  const salir = async () => {
+    await desactivarPush().catch(() => {})
+    await supabase.auth.signOut()
+  }
 
   return (
     <AuthContext.Provider
@@ -62,3 +72,5 @@ export function puede(perfil, permiso) {
 
 export const esPersonal = (perfil) =>
   ['superadmin', 'admin', 'colaborador'].includes(perfil?.rol) && perfil?.activo
+
+export const esJefatura = (perfil) => ['superadmin', 'admin'].includes(perfil?.rol) && perfil?.activo

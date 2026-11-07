@@ -4,6 +4,15 @@ import { puede, useAuth } from '../../lib/auth'
 import { dinero, mensajeError } from '../../lib/format'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import ListaCompras, { ListaPagos, SELECT_COMPRAS, SELECT_PAGOS } from '../../components/ListaCompras'
+import { useApariencia } from '../../lib/apariencia'
+import { invocar } from '../../lib/funciones'
+
+// wa.me con el número (se asume El Salvador, 503, si tiene 8 dígitos) o sin número para elegir contacto
+function enlaceWhatsApp(cliente, telefono, tienda) {
+  const texto = `Hola ${cliente.nombre.split(' ')[0]} 👋, tu saldo pendiente en ${tienda} es de ${dinero(cliente.saldo)}. ¡Gracias!`
+  const numero = telefono ? (telefono.length === 8 ? `503${telefono}` : telefono) : ''
+  return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`
+}
 
 export default function Deudores({ avisar }) {
   const [saldos, setSaldos] = useState(null)
@@ -55,7 +64,7 @@ export default function Deudores({ avisar }) {
       {lista.length === 0 ? (
         <Vacio>Nadie por aquí.</Vacio>
       ) : (
-        <ul className="space-y-2">
+        <ul className="escalonado space-y-2">
           {lista.map((s) => (
             <li key={s.usuario_id}>
               <button onClick={() => setAbierto(s)} className="tarjeta flex w-full items-center justify-between p-3 text-left">
@@ -98,6 +107,9 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
   const [referencia, setReferencia] = useState('')
   const [tipo, setTipo] = useState('pago')
   const [guardando, setGuardando] = useState(false)
+  const [telefono, setTelefono] = useState(null)
+  const [recordando, setRecordando] = useState(false)
+  const { apariencia: { nombre_tienda: nombreTienda } } = useApariencia()
 
   const cargar = useCallback(async () => {
     const [c, p] = await Promise.all([
@@ -111,6 +123,23 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
   }, [cliente.usuario_id, avisar])
 
   useEffect(() => { cargar() }, [cargar])
+
+  useEffect(() => {
+    supabase.from('perfiles').select('telefono').eq('id', cliente.usuario_id).maybeSingle()
+      .then(({ data }) => setTelefono(data?.telefono ?? null))
+  }, [cliente.usuario_id])
+
+  async function recordar() {
+    setRecordando(true)
+    try {
+      await invocar('notificar', { accion: 'recordar', usuario_id: cliente.usuario_id })
+      avisar('ok', `Aviso enviado a ${cliente.nombre.split(' ')[0]}.`)
+    } catch (err) {
+      avisar('error', err.message)
+    } finally {
+      setRecordando(false)
+    }
+  }
 
   async function registrarPago(e) {
     e.preventDefault()
@@ -146,12 +175,29 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
         {cliente.saldo === 0 && 'Está al día.'}
       </p>
 
+      {cliente.saldo > 0 && (
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          <a href={enlaceWhatsApp(cliente, telefono, nombreTienda)} target="_blank" rel="noopener noreferrer"
+            className="btn flex items-center justify-center gap-1.5 bg-emerald-600 text-sm text-white">
+            💬 WhatsApp
+          </a>
+          <button type="button" onClick={recordar} disabled={recordando} className="btn-secundario text-sm">
+            {recordando ? 'Enviando…' : '🔔 Recordar'}
+          </button>
+          {!telefono && (
+            <p className="col-span-2 text-xs text-slate-500">
+              No tiene número guardado: WhatsApp te dejará elegir el contacto.
+            </p>
+          )}
+        </div>
+      )}
+
       {puedePagar && (
         <form onSubmit={registrarPago} className="mb-5 space-y-3 rounded-2xl bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
             {[['pago', 'Recibir pago'], ['devolucion', 'Devolver saldo']].map(([k, t]) => (
               <button type="button" key={k} onClick={() => setTipo(k)}
-                className={`rounded-lg py-2 ${tipo === k ? 'bg-marca text-white' : 'bg-white ring-1 ring-slate-200'}`}>
+                className={`rounded-lg py-2 ${tipo === k ? 'bg-marca text-sobre-marca' : 'bg-superficie ring-1 ring-slate-200'}`}>
                 {t}
               </button>
             ))}
@@ -186,7 +232,7 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
       <div className="mb-3 grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
         {[['compras', 'Compras'], ['pagos', 'Pagos']].map(([k, t]) => (
           <button key={k} onClick={() => setPestana(k)}
-            className={`rounded-lg py-2 ${pestana === k ? 'bg-white text-marca shadow' : 'text-slate-500'}`}>
+            className={`rounded-lg py-2 ${pestana === k ? 'bg-superficie text-marca-texto shadow' : 'text-slate-500'}`}>
             {t}
           </button>
         ))}
