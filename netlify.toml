@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Valores públicos por diseño (la seguridad real está en la RLS de Supabase).
+# La llave secreta de Supabase NUNCA va aquí.
+[build.environment]
+  NODE_VERSION = "22"
+  VITE_SUPABASE_URL = "https://yqjuqzmgzydfdaygafgq.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3L-bruVwjYg8XgZxw6PyFg_9CRYSGA8"
+  VITE_EMAIL_DOMAIN = "tienda.internal"
