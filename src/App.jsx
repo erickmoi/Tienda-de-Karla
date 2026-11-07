@@ -6,6 +6,7 @@ import { dinero } from './lib/format'
 import { vibrar } from './lib/tema'
 import { Aviso, Cargando } from './components/ui'
 import Tutorial from './components/Tutorial'
+import InvitarAvisos from './components/InvitarAvisos'
 import Login from './pages/Login'
 import Menu from './pages/Menu'
 import MiCuenta from './pages/MiCuenta'
@@ -87,6 +88,7 @@ export default function App() {
         </p>
         <button onClick={() => recargarPerfil()} className="btn-primario">Ya me aprobaron</button>
         <button onClick={salir} className="text-sm font-semibold text-slate-500">Cerrar sesión</button>
+        <InvitarAvisos encargada={apariencia.nombre_encargada} pendiente />
       </div>
     )
   }
@@ -172,6 +174,9 @@ export default function App() {
           })}
         </div>
       </nav>
+
+      <InvitarAvisos encargada={apariencia.nombre_encargada} avisar={avisar}
+        listo={!tutorial && perfil.tutorial_visto !== false} />
 
       {tutorial && (
         <Tutorial
