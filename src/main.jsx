@@ -7,6 +7,7 @@ import { AparienciaProvider } from './lib/apariencia.jsx'
 import { temaInicial } from './lib/tema'
 import { escucharInstalacion } from './lib/instalar'
 import Instalar from './pages/Instalar.jsx'
+import AvisoActualizacion from './components/AvisoActualizacion.jsx'
 
 temaInicial()
 escucharInstalacion()
@@ -17,6 +18,7 @@ const esGuia = window.location.pathname.replace(/\/$/, '') === '/instalar'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AparienciaProvider>
+      <AvisoActualizacion />
       {esGuia ? <Instalar /> : (
         <AuthProvider>
           <App />

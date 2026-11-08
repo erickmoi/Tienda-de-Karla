@@ -19,3 +19,9 @@
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://yqjuqzmgzydfdaygafgq.supabase.co; connect-src 'self' https://yqjuqzmgzydfdaygafgq.supabase.co wss://yqjuqzmgzydfdaygafgq.supabase.co; font-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# La app consulta este archivo para saber si hay versión nueva: nunca debe quedar en caché
+[[headers]]
+  for = "/version.json"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
