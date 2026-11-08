@@ -7,11 +7,11 @@ import { estaInstalada, plataforma } from '../lib/instalar'
 export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes, pagosAuto, setVista, onFin }) {
   const pasos = useMemo(() => {
     const p = [
-      { titulo: `¡Hola, ${nombre}! 👋`, texto: 'Te muestro cómo usar la tienda en menos de un minuto.', vista: 'menu' },
-      { objetivo: 'categorias', vista: 'menu', titulo: 'Categorías', texto: 'Toca una categoría para ver solo esos productos. Con 🔎 buscas, y en 🔥 Promos están las ofertas.' },
+      { titulo: `¡Hola, ${nombre}!`, texto: 'Te muestro cómo usar la tienda en menos de un minuto.', vista: 'menu' },
+      { objetivo: 'categorias', vista: 'menu', titulo: 'Categorías', texto: 'Toca una categoría para ver solo esos productos. Con la lupa buscas, la estrella guarda tus favoritos y el fuego muestra las promos.' },
       { objetivo: 'producto', vista: 'menu', titulo: 'Agrega lo que tomes', texto: 'Toca + para agregar; aparecen − y la cantidad para ajustar. Los agotados salen en gris al final.' },
       {
-        titulo: '🛒 Registra tu compra',
+        titulo: 'Registra tu compra',
         texto: pagosClientes
           ? `Abajo aparecerá “Ver carrito”. Ahí eliges “A mi cuenta” o “Ya pagué”.${pagosAuto ? '' : ` Si ya pagaste, ${encargada} lo aprueba.`}`
           : 'Abajo aparecerá “Ver carrito”. Ahí registras la compra y se suma a tu cuenta.',
@@ -28,14 +28,14 @@ export default function Tutorial({ nombre, encargada, esPersonal, pagosClientes,
     }
     if (!estaInstalada()) {
       p.push({
-        titulo: '📲 Instálala en tu celular',
+        titulo: 'Instálala en tu celular',
         texto: plataforma() === 'ios'
           ? 'En Safari toca Compartir (el cuadro con flecha ↑) → “Agregar a pantalla de inicio” → “Agregar”. Luego ábrela desde el ícono.'
           : 'En Chrome toca ⋮ (arriba a la derecha) → “Instalar app”. También está el aviso morado arriba del menú.',
         vista: 'menu',
       })
     }
-    p.push({ titulo: '¡Listo! 🎉', texto: 'Puedes volver a ver esto en Mi cuenta → Mi perfil.', vista: 'menu' })
+    p.push({ titulo: '¡Listo!', texto: 'Puedes volver a ver esto en Mi cuenta → Mi perfil.', vista: 'menu' })
     return p
   }, [nombre, encargada, esPersonal, pagosClientes, pagosAuto])
 

@@ -4,6 +4,7 @@ import { mensajeError } from '../lib/format'
 import { Logo, useApariencia } from '../lib/apariencia'
 import { entrarConClave, marcarActividadAdmin } from '../lib/acceso'
 import CampoClave, { claveValida } from '../components/CampoClave'
+import Icono from '../components/Icono'
 
 export default function Login() {
   const { apariencia } = useApariencia()
@@ -106,7 +107,7 @@ export default function Login() {
           {apariencia.registro === 'aprobacion' && modo === 'crear' && (
             <p className="text-center text-xs text-slate-500">{apariencia.nombre_encargada} aprobará tu cuenta antes de que puedas comprar.</p>
           )}
-          <a href="/instalar" className="block text-center text-sm font-semibold text-marca-texto">📲 ¿Cómo instalar la app?</a>
+          <a href="/instalar" className="flex items-center justify-center gap-1.5 text-sm font-semibold text-marca-texto"><Icono n="celular" size={18} /> ¿Cómo instalar la app?</a>
           {modo === 'entrar' && (
             <p className="text-center text-xs text-slate-500">¿Olvidaste tu PIN? Pídele a {apariencia.nombre_encargada} que lo restablezca.</p>
           )}

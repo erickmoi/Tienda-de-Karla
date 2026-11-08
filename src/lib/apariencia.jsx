@@ -2,11 +2,12 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import { supabase } from './supabase'
 import { aplicarColor } from './tema'
 import { actualizarIconoIOS } from './icono'
+import { esClaveIcono, IconoCategoria } from '../components/Icono'
 
 const POR_DEFECTO = {
   nombre_tienda: 'Tienda de Karla',
   color_marca: '#312e81',
-  emoji: '🍿',
+  emoji: 'popcorn',
   logo_url: null,
   frase: 'Anota lo que tomas y paga después',
   columnas_menu: 2,
@@ -50,6 +51,12 @@ export function Logo({ className = 'h-8 w-8 text-2xl' }) {
   return apariencia.logo_url ? (
     <img src={apariencia.logo_url} alt="" className={`${className} rounded-lg object-cover`} />
   ) : (
-    <span className={`${className} inline-flex items-center justify-center`}>{apariencia.emoji}</span>
+    esClaveIcono(apariencia.emoji) ? (
+      <span className={`${className} inline-flex items-center justify-center rounded-[28%] bg-marca text-sobre-marca`}>
+        <IconoCategoria valor={apariencia.emoji} size="62%" />
+      </span>
+    ) : (
+      <span className={`${className} inline-flex items-center justify-center`}>{apariencia.emoji}</span>
+    )
   )
 }

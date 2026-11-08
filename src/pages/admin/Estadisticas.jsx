@@ -4,6 +4,7 @@ import { dinero, mensajeError } from '../../lib/format'
 import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Vacio } from '../../components/ui'
 import { descargarCSV, fechaCSV } from '../../lib/csv'
+import Icono from '../../components/Icono'
 
 // Fecha de hoy en El Salvador, como YYYY-MM-DD
 const hoySV = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador' }).format(new Date())
@@ -98,7 +99,7 @@ export default function Estadisticas({ avisar }) {
                   <li key={s.nombre} className="flex justify-between py-1.5">
                     <span>{s.nombre}</span>
                     <span className={`font-semibold ${s.agotado ? 'text-rose-600' : 'text-amber-700'}`}>
-                      {s.agotado ? '⛔ Agotado' : `⚠️ Quedan ${s.stock}`}
+                      {s.agotado ? 'Agotado' : `Quedan ${s.stock}`}
                     </span>
                   </li>
                 ))}
@@ -155,9 +156,9 @@ function Exportar({ desde, hasta, avisar }) {
       <h3 className="mb-1 font-semibold text-slate-800">⬇️ Exportar a Excel</h3>
       <p className="mb-3 text-xs text-slate-500">Archivos CSV que abren en Excel o Google Sheets.</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <button onClick={ventas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'ventas' ? 'Preparando…' : '🛒 Ventas del período'}</button>
-        <button onClick={deudas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'deudas' ? 'Preparando…' : '💵 Saldos de todos'}</button>
-        <button onClick={inventario} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'inventario' ? 'Preparando…' : '📦 Inventario actual'}</button>
+        <button onClick={ventas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'ventas' ? 'Preparando…' : <><Icono n="carrito" size={16} className="mr-1 -mt-0.5 align-middle" />Ventas del período</>}</button>
+        <button onClick={deudas} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'deudas' ? 'Preparando…' : <><Icono n="deudores" size={16} className="mr-1 -mt-0.5 align-middle" />Saldos de todos</>}</button>
+        <button onClick={inventario} disabled={!!ocupado} className="btn-secundario text-sm">{ocupado === 'inventario' ? 'Preparando…' : <><Icono n="inventario" size={16} className="mr-1 -mt-0.5 align-middle" />Inventario actual</>}</button>
       </div>
     </section>
   )

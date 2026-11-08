@@ -3,25 +3,26 @@ import { supabase } from '../../lib/supabase'
 import { dinero, fecha, mensajeError } from '../../lib/format'
 import { Cargando, Vacio } from '../../components/ui'
 import { useEncargada } from '../../lib/apariencia'
+import Icono from '../../components/Icono'
 
 const PAGINA = 50
 
 const ICONOS = {
-  editar_producto: '🏷️',
-  registrar_pago: '💵',
-  registrar_devolucion: '↩️',
-  anular_compra: '🗑️',
-  asignar_rol: '🎖️',
-  activar_usuario: '✅',
-  desactivar_usuario: '🚫',
-  crear_usuario: '🆕',
-  restablecer_pin: '🔑',
-  recordar_cobro: '🔔',
-  rechazar_pago: '❌',
-  pago_automatico: '⚡',
-  asignar_limite: '💳',
-  conteo_inventario: '📋',
-  cuenta_banco: '🏦',
+  editar_producto: 'productos',
+  registrar_pago: 'efectivo',
+  registrar_devolucion: 'devolucion',
+  anular_compra: 'borrar',
+  asignar_rol: 'medalla',
+  activar_usuario: 'ok',
+  desactivar_usuario: 'prohibido',
+  crear_usuario: 'registro',
+  restablecer_pin: 'llave',
+  recordar_cobro: 'notificaciones',
+  rechazar_pago: 'error',
+  pago_automatico: 'rayo',
+  asignar_limite: 'pagos',
+  conteo_inventario: 'conteo',
+  cuenta_banco: 'banco',
 }
 
 const ROLES = { superadmin: 'superadmin', admin: 'administración', colaborador: 'colaborador', cliente: 'cliente' }
@@ -122,7 +123,7 @@ export default function Bitacora({ avisar }) {
           <ul className="escalonado space-y-2">
             {g.filas.map((e) => (
               <li key={e.id} className="tarjeta flex gap-3 p-3">
-                <span className="text-xl">{ICONOS[e.accion] ?? '📝'}</span>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-marca-claro text-marca-texto"><Icono n={ICONOS[e.accion] ?? 'nota'} size={20} /></span>
                 <div className="min-w-0">
                   <p className="text-sm text-slate-800">{describir(e, nombres)}</p>
                   <p className="text-xs text-slate-500">{nombres[e.usuario_id] ?? 'Sistema'} · {fecha(e.created_at)}</p>

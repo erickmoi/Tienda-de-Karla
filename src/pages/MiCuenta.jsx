@@ -14,6 +14,7 @@ import { estaInstalada } from '../lib/instalar'
 import ListaCompras, {
   FormaDePago, ListaPagos, SELECT_COMPRAS, SELECT_PAGOS, SELECT_REPORTES,
 } from '../components/ListaCompras'
+import Icono from '../components/Icono'
 
 export default function MiCuenta({ avisar, onCambio, onTutorial }) {
   const { perfil } = useAuth()
@@ -91,12 +92,12 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
             <p className="mt-1 text-sm opacity-90">{debe ? 'Debes' : aFavor ? 'Crédito a favor' : 'Estás al día'}</p>
             <p className="text-4xl font-bold tabular-nums">{dinero(Math.abs(datos.saldo))}</p>
             {totalRevision > 0 && (
-              <p className="mt-1 text-sm opacity-90">⏳ {dinero(totalRevision)} en revisión por {encargada}</p>
+              <p className="mt-1 text-sm opacity-90"><Icono n="espera" size={15} className="mr-1 -mt-0.5 align-middle" />{dinero(totalRevision)} en revisión por {encargada}</p>
             )}
           </div>
           <button data-tour="mi-perfil" onClick={() => setVerPerfil(true)}
             className="rounded-full bg-white/20 px-3 py-1.5 text-sm font-semibold backdrop-blur transition active:scale-95">
-            ⚙️ Mi perfil
+            <Icono n="perfil" size={17} className="mr-1 -mt-0.5 align-middle" />Mi perfil
           </button>
         </div>
         {usoLimite != null && (
@@ -112,14 +113,14 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
         {apariencia.pagos_clientes && (
           <button data-tour="agregar-credito" onClick={() => setVerCredito(true)}
             className="relative mt-4 w-full rounded-xl bg-white py-2.5 text-sm font-bold text-slate-900 shadow transition active:scale-[0.98]">
-            {debe ? '💵 Ya pagué / Agregar crédito' : '➕ Agregar crédito'}
+            {debe ? <><Icono n="efectivo" size={18} className="mr-1 -mt-0.5 align-middle" />Ya pagué / Agregar crédito</> : <><Icono n="mas" size={18} className="mr-1 -mt-0.5 align-middle" />Agregar crédito</>}
           </button>
         )}
       </div>
 
       <button onClick={() => setVerCuentas(true)}
         className="tarjeta flex w-full items-center gap-3 p-3 text-left transition active:scale-[0.98]">
-        <span className="text-2xl">💳</span>
+        <Icono n="pagos" size={28} className="text-marca-texto" />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-bold text-slate-900">Cómo pagarle a {encargada}</span>
           <span className="block text-xs text-slate-500">Cuentas de banco y QR para transferir</span>
@@ -131,7 +132,7 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
         <div className="animar-entrada rounded-2xl bg-red-50 p-3 text-sm text-red-700 ring-1 ring-red-200">
           {rechazos.map((r) => (
             <p key={r.id}>
-              ❌ {encargada} no aprobó tu pago de {dinero(r.monto)} del {fecha(r.created_at)}
+              <Icono n="error" size={15} className="mr-1 -mt-0.5 align-middle" />{encargada} no aprobó tu pago de {dinero(r.monto)} del {fecha(r.created_at)}
               {r.nota_revision ? `: ${r.nota_revision}` : '.'}
             </p>
           ))}
@@ -172,7 +173,7 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
                 <div>
                   <p className="text-xs text-slate-500">{fecha(r.created_at)}</p>
                   <p className="text-sm text-slate-700">
-                    ⏳ En revisión · {r.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia'}
+                    <Icono n="espera" size={14} className="mr-1 -mt-0.5 align-middle" />En revisión · {r.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia'}
                     {r.compra_id ? ' · por una compra' : ''}
                   </p>
                 </div>
@@ -189,7 +190,7 @@ export default function MiCuenta({ avisar, onCambio, onTutorial }) {
           onTutorial={() => { setVerPerfil(false); onTutorial?.() }} />
       )}
       {verCuentas && (
-        <Hoja titulo={`💳 Cómo pagarle a ${encargada}`} onCerrar={() => setVerCuentas(false)}>
+        <Hoja titulo={`Cómo pagarle a ${encargada}`} icono="pagos" onCerrar={() => setVerCuentas(false)}>
           <ListaCuentas encargada={encargada} />
           {apariencia.pagos_clientes && (
             <button onClick={() => { setVerCuentas(false); setVerCredito(true) }} className="btn-primario mt-4 w-full">
@@ -375,10 +376,10 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
             <span aria-hidden="true"
               className="absolute inset-y-1 left-1 w-[calc(33.333%-2.67px)] rounded-lg bg-superficie shadow transition-transform duration-300"
               style={{ transform: `translateX(${['auto', 'claro', 'oscuro'].indexOf(tema) * 100}%)` }} />
-            {[['auto', '📱 Auto'], ['claro', '☀️ Claro'], ['oscuro', '🌙 Oscuro']].map(([k, t]) => (
+            {[['auto', 'Auto', 'celular'], ['claro', 'Claro', 'sol'], ['oscuro', 'Oscuro', 'luna']].map(([k, t, ic]) => (
               <button key={k} type="button" onClick={() => cambiarTema(k)}
-                className={`relative py-2 transition-colors ${tema === k ? 'text-marca-texto' : 'text-slate-500'}`}>
-                {t}
+                className={`relative flex items-center justify-center gap-1.5 py-2 transition-colors ${tema === k ? 'text-marca-texto' : 'text-slate-500'}`}>
+                <Icono n={ic} size={17} />{t}
               </button>
             ))}
           </div>
@@ -414,7 +415,7 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
 
         {!estaInstalada() && (
           <section className="space-y-2">
-            <p className="etiqueta">📲 Instalar la app</p>
+            <p className="etiqueta"><Icono n="celular" size={15} className="mr-1 -mt-0.5 align-middle" />Instalar la app</p>
             <GuiaInstalar />
           </section>
         )}
@@ -428,7 +429,7 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
         </form>
 
         <button type="button" onClick={onTutorial} className="w-full py-2 text-sm font-semibold text-marca-texto">
-          🎓 Ver el tutorial otra vez
+          <Icono n="tutorial" size={18} className="mr-1 -mt-0.5 align-middle" />Ver el tutorial otra vez
         </button>
         <button type="button" onClick={() => confirm('¿Cerrar sesión en este dispositivo?') && salir()}
           className="btn-secundario w-full text-red-600">
@@ -437,7 +438,7 @@ function MiPerfil({ avisar, onCerrar, onTutorial }) {
         <button type="button"
           onClick={() => confirm('¿Cerrar sesión en TODOS tus dispositivos? Úsalo si perdiste o cambiaste de celular. Tendrás que volver a entrar en cada uno.') && salirDeTodo()}
           className="w-full py-1 text-xs font-semibold text-red-600">
-          🔐 Cerrar sesión en todos mis dispositivos
+          <Icono n="seguridad" size={15} className="mr-1 -mt-0.5 align-middle" />Cerrar sesión en todos mis dispositivos
         </button>
       </div>
     </Hoja>

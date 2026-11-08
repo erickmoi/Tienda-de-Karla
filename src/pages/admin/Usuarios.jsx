@@ -6,6 +6,7 @@ import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { invocar, pinAleatorio } from '../../lib/funciones'
 import { useApariencia } from '../../lib/apariencia'
 import { enlaceInstalar } from '../../lib/instalar'
+import Icono from '../../components/Icono'
 
 const ROLES = {
   superadmin: 'Superadmin',
@@ -73,14 +74,14 @@ export default function Usuarios({ avisar }) {
         <p className="text-sm text-slate-500">{usuarios.length} cuentas registradas</p>
         <button onClick={() => setCreando(true)} className="btn-primario py-2 text-sm">+ Crear cuenta</button>
       </div>
-      <a href={`https://wa.me/?text=${encodeURIComponent(`¡Ya tenemos app para la tienda! 🛒 Instálala aquí: ${enlaceInstalar()}`)}`}
+      <a href={`https://wa.me/?text=${encodeURIComponent(`¡Ya tenemos app para la tienda! Instálala aquí: ${enlaceInstalar()}`)}`}
         target="_blank" rel="noopener noreferrer"
         className="btn flex items-center justify-center gap-2 bg-emerald-600 text-sm text-white">
-        💬 Invitar por WhatsApp (enlace para instalar)
+        <Icono n="whatsapp" size={18} />Invitar por WhatsApp (enlace para instalar)
       </a>
       {porAprobar.length > 0 && (
         <section className="animar-entrada rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
-          <h3 className="mb-2 font-bold text-amber-800">👤 Cuentas por aprobar ({porAprobar.length})</h3>
+          <h3 className="mb-2 font-bold text-amber-800"><Icono n="registro" size={18} className="mr-1 -mt-0.5 align-middle" />Cuentas por aprobar ({porAprobar.length})</h3>
           <ul className="space-y-2">
             {porAprobar.map((u) => (
               <li key={u.id} className="tarjeta flex items-center justify-between gap-2 p-3">
@@ -89,8 +90,8 @@ export default function Usuarios({ avisar }) {
                   <p className="text-xs text-slate-500">@{u.usuario} · {fecha(u.created_at)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={() => aprobar(u, false)} className="btn-peligro px-3 py-1.5 text-sm">✕</button>
-                  <button onClick={() => aprobar(u, true)} className="btn bg-emerald-600 px-3 py-1.5 text-sm text-white">✓ Aprobar</button>
+                  <button onClick={() => aprobar(u, false)} className="btn-peligro px-3 py-1.5 text-sm" aria-label="Rechazar"><Icono n="cerrar" size={16} weight="bold" /></button>
+                  <button onClick={() => aprobar(u, true)} className="btn bg-emerald-600 px-3 py-1.5 text-sm text-white"><Icono n="check" size={15} className="mr-1 -mt-0.5 align-middle" />Aprobar</button>
                 </div>
               </li>
             ))}
@@ -159,7 +160,7 @@ function CrearCuenta({ avisar, onCerrar, onCreada }) {
     return (
       <Hoja titulo="Cuenta creada" onCerrar={onCreada}>
         <div className="animar-entrada space-y-3 text-center">
-          <p className="text-5xl">🎉</p>
+          <Icono n="fiesta" size={56} className="mx-auto text-marca-texto" />
           <p className="text-slate-700">Pásale estos datos a <b>{creada.nombre}</b>:</p>
           <div className="rounded-2xl bg-slate-100 p-4 text-left">
             <p className="text-sm text-slate-500">Usuario</p>
@@ -192,7 +193,7 @@ function CrearCuenta({ avisar, onCerrar, onCreada }) {
           <div className="flex gap-2">
             <input id="cpin" className="input font-mono tracking-[0.3em]" inputMode="numeric" value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
-            <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 text-sm">🎲 Otro</button>
+            <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 text-sm"><Icono n="dado" size={17} className="mr-1 -mt-0.5 align-middle" />Otro</button>
           </div>
         </div>
         <button disabled={guardando || !nombre.trim() || usuario.length < 3 || pin.length !== 6} className="btn-primario w-full">
@@ -223,7 +224,7 @@ function RestablecerPin({ usuario, avisar }) {
 
   return (
     <section className="mb-5 rounded-2xl bg-slate-50 p-3">
-      <p className="mb-2 text-sm font-medium text-slate-600">🔑 Restablecer PIN</p>
+      <p className="mb-2 text-sm font-medium text-slate-600"><Icono n="llave" size={16} className="mr-1 -mt-0.5 align-middle" />Restablecer PIN</p>
       {listo ? (
         <p className="animar-entrada text-sm text-slate-700">
           Listo. Nuevo PIN de {usuario.nombre.split(' ')[0]}: <b className="font-mono text-lg tracking-[0.2em]">{pin}</b>
@@ -232,7 +233,7 @@ function RestablecerPin({ usuario, avisar }) {
         <div className="flex gap-2">
           <input className="input font-mono tracking-[0.3em]" inputMode="numeric" value={pin}
             onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} />
-          <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 px-3" aria-label="Generar otro">🎲</button>
+          <button type="button" onClick={() => setPin(pinAleatorio())} className="btn-secundario shrink-0 px-3" aria-label="Generar otro"><Icono n="dado" size={18} /></button>
           <button type="button" onClick={restablecer} disabled={guardando || pin.length !== 6} className="btn-primario shrink-0 text-sm">
             Cambiar
           </button>
@@ -361,7 +362,7 @@ function LimiteDeuda({ usuario, avisar, onCambio }) {
 
   return (
     <section className="mb-5 rounded-2xl bg-slate-50 p-3">
-      <p className="mb-1 text-sm font-medium text-slate-600">💳 Límite de deuda propio</p>
+      <p className="mb-1 text-sm font-medium text-slate-600"><Icono n="pagos" size={16} className="mr-1 -mt-0.5 align-middle" />Límite de deuda propio</p>
       <p className="mb-2 text-xs text-slate-500">
         Vacío = usa el general ({general ? `$${Number(general).toFixed(2)}` : 'sin límite'}). Escribe 0 para quitarle el límite.
       </p>

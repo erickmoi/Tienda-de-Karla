@@ -4,6 +4,7 @@ import { dinero, fecha, mensajeError } from '../../lib/format'
 import { descargarCSV, fechaCSV } from '../../lib/csv'
 import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Vacio } from '../../components/ui'
+import Icono from '../../components/Icono'
 
 const hoySV = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador' }).format(new Date())
 const restarDias = (iso, n) => {
@@ -49,11 +50,11 @@ export default function Caja({ avisar }) {
       {!datos ? <Cargando /> : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <Dato titulo="💵 Efectivo recibido" valor={dinero(datos.efectivo)} destacado />
-            <Dato titulo="🏦 Transferencias" valor={dinero(datos.transferencias)} />
-            <Dato titulo="🛒 Ventas" valor={dinero(datos.ventas)}
+            <Dato icono="efectivo" titulo="Efectivo recibido" valor={dinero(datos.efectivo)} destacado />
+            <Dato icono="banco" titulo="Transferencias" valor={dinero(datos.transferencias)} />
+            <Dato icono="carrito" titulo="Ventas" valor={dinero(datos.ventas)}
               sub={`${datos.num_compras} compras${Number(datos.descuentos) > 0 ? ` · ${dinero(datos.descuentos)} en promos` : ''}`} />
-            <Dato titulo="⏳ Por aprobar" valor={dinero(datos.por_aprobar)} sub="Pagos avisados por clientes" />
+            <Dato icono="espera" titulo="Por aprobar" valor={dinero(datos.por_aprobar)} sub="Pagos avisados por clientes" />
           </div>
 
           <section className="tarjeta space-y-2">
@@ -66,7 +67,7 @@ export default function Caja({ avisar }) {
                 <span className={`shrink-0 rounded-xl px-3 py-2 text-sm font-bold ${
                   Math.abs(diferencia) < 0.005 ? 'bg-emerald-50 text-emerald-700'
                     : diferencia > 0 ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-700'}`}>
-                  {Math.abs(diferencia) < 0.005 ? '✓ Cuadra' : diferencia > 0 ? `Sobran ${dinero(diferencia)}` : `Faltan ${dinero(-diferencia)}`}
+                  {Math.abs(diferencia) < 0.005 ? 'Cuadra' : diferencia > 0 ? `Sobran ${dinero(diferencia)}` : `Faltan ${dinero(-diferencia)}`}
                 </span>
               )}
             </div>
@@ -89,7 +90,7 @@ export default function Caja({ avisar }) {
                     <div className="min-w-0">
                       <p className="truncate font-medium text-slate-800">{p.nombre}</p>
                       <p className="text-xs text-slate-500">
-                        {fecha(p.fecha)} · {p.metodo === 'efectivo' ? '💵 Efectivo' : '🏦 Transferencia'}{p.referencia ? ` · ${p.referencia}` : ''}
+                        {fecha(p.fecha)} · {p.metodo === 'efectivo' ? 'Efectivo' : 'Transferencia'}{p.referencia ? ` · ${p.referencia}` : ''}
                       </p>
                     </div>
                     <span className={`shrink-0 font-bold tabular-nums ${p.tipo === 'pago' ? 'text-emerald-700' : 'text-amber-700'}`}>
@@ -107,10 +108,10 @@ export default function Caja({ avisar }) {
   )
 }
 
-function Dato({ titulo, valor, sub, destacado }) {
+function Dato({ icono, titulo, valor, sub, destacado }) {
   return (
     <div className={`tarjeta ${destacado ? 'ring-2 ring-emerald-300' : ''}`}>
-      <p className="text-xs text-slate-500">{titulo}</p>
+      <p className="text-xs text-slate-500">{icono && <Icono n={icono} size={15} className="mr-1 -mt-0.5 align-middle text-marca-texto" />}{titulo}</p>
       <p className="text-2xl font-bold tabular-nums text-slate-900">{valor}</p>
       {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
     </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icono from './Icono'
 
 // Campo de PIN/contraseña: teclado numérico por defecto, con botón para cambiar a letras
 export default function CampoClave({ id, value, onChange, autoComplete = 'current-password', placeholder, autoFocus, className = '' }) {
@@ -13,7 +14,7 @@ export default function CampoClave({ id, value, onChange, autoComplete = 'curren
         value={value} onChange={(e) => onChange(letras ? e.target.value : e.target.value.replace(/\D/g, ''))} />
       <div className="absolute inset-y-0 right-1.5 flex items-center gap-1">
         <button type="button" onClick={() => setVer(!ver)} aria-label={ver ? 'Ocultar' : 'Mostrar'}
-          className="rounded-lg px-1.5 py-1 text-base text-slate-500">{ver ? '🙈' : '👁️'}</button>
+          className="rounded-lg px-1.5 py-1 text-slate-500"><Icono n={ver ? 'ocultar' : 'ver'} size={20} /></button>
         <button type="button" aria-label={letras ? 'Usar teclado de números' : 'Usar teclado de letras'}
           onClick={(e) => {
             setLetras(!letras)

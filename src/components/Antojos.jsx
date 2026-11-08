@@ -5,6 +5,7 @@ import { useEncargada } from '../lib/apariencia'
 import { mensajeError } from '../lib/format'
 import { vibrar } from '../lib/tema'
 import { Hoja } from './ui'
+import Icono from './Icono'
 
 const RECIENTES_DIAS = 14
 
@@ -59,7 +60,7 @@ export default function Antojos({ onCerrar, avisar, inicial = '' }) {
     if (estado === 'descartado' && !confirm(`¿Quitar “${a.texto}” de la lista?`)) return
     const { error } = await supabase.rpc('resolver_antojo', { p_id: a.id, p_estado: estado })
     if (error) return avisar('error', mensajeError(error))
-    avisar('ok', estado === 'traido' ? 'Les avisamos a quienes lo pidieron. 🎉' : 'Quitado de la lista.')
+    avisar('ok', estado === 'traido' ? 'Les avisamos a quienes lo pidieron.' : 'Quitado de la lista.')
     cargar()
   }
 
@@ -67,7 +68,7 @@ export default function Antojos({ onCerrar, avisar, inicial = '' }) {
   const traidos = (lista ?? []).filter((a) => a.estado === 'traido')
 
   return (
-    <Hoja titulo="💡 Buzón de antojos" onCerrar={onCerrar}>
+    <Hoja titulo="Buzón de antojos" icono="antojo" onCerrar={onCerrar}>
       <div className="space-y-4">
         <p className="text-sm text-slate-600">
           ¿Qué quieres que {encargada} traiga? Pídelo o vota por lo que otros pidieron: lo más votado tiene más chance.
@@ -84,20 +85,22 @@ export default function Antojos({ onCerrar, avisar, inicial = '' }) {
           <ul className="space-y-2">
             {abiertos.map((a, i) => (
               <li key={a.id} className="flex items-center gap-2 rounded-xl bg-superficie p-2.5 ring-1 ring-slate-200">
-                <span className="w-6 shrink-0 text-center text-sm font-bold text-slate-400">{i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>
+                <span className="flex w-6 shrink-0 justify-center text-sm font-bold text-slate-400">
+                  {i < 3 ? <Icono n="medalla" size={20} className={['text-amber-500', 'text-slate-400', 'text-orange-700'][i]} /> : i + 1}
+                </span>
                 <span className="min-w-0 flex-1 text-sm font-semibold text-slate-900">{a.texto}</span>
                 {admin && (
                   <>
                     <button onClick={() => resolver(a, 'traido')} aria-label={`Ya traje ${a.texto}`}
-                      className="shrink-0 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">✓ Traje</button>
+                      className="shrink-0 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200"><Icono n="check" size={13} className="mr-0.5 -mt-0.5 align-middle" weight="bold" />Traje</button>
                     <button onClick={() => resolver(a, 'descartado')} aria-label={`Quitar ${a.texto}`}
-                      className="shrink-0 rounded-lg px-1.5 py-1 text-xs text-slate-400">✕</button>
+                      className="shrink-0 rounded-lg px-1.5 py-1 text-xs text-slate-400"><Icono n="cerrar" size={16} /></button>
                   </>
                 )}
                 <button onClick={() => votar(a)} aria-pressed={a.mio} aria-label={a.mio ? 'Quitar mi voto' : 'Votar'}
                   className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-sm font-bold transition active:scale-90 ${
                     a.mio ? 'bg-marca text-sobre-marca' : 'bg-slate-100 text-slate-600'}`}>
-                  👍 <span className="tabular-nums">{a.votos}</span>
+                  <Icono n="voto" size={16} weight={a.mio ? 'fill' : 'duotone'} /> <span className="tabular-nums">{a.votos}</span>
                 </button>
               </li>
             ))}
@@ -106,7 +109,7 @@ export default function Antojos({ onCerrar, avisar, inicial = '' }) {
 
         {traidos.length > 0 && (
           <div>
-            <p className="etiqueta">🎉 Ya llegaron</p>
+            <p className="etiqueta"><Icono n="fiesta" size={15} className="mr-1 -mt-0.5 align-middle" />Ya llegaron</p>
             <div className="flex flex-wrap gap-1.5">
               {traidos.map((a) => (
                 <span key={a.id} className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">{a.texto}</span>

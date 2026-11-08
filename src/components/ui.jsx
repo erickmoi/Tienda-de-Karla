@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import Icono from './Icono'
 
 export function Aviso({ aviso, onCerrar }) {
   useEffect(() => {
@@ -37,7 +38,7 @@ export function Vacio({ children }) {
   return <p className="animar-entrada py-8 text-center text-sm text-slate-500">{children}</p>
 }
 
-export function Hoja({ titulo, onCerrar, children }) {
+export function Hoja({ titulo, icono, onCerrar, children }) {
   useEffect(() => {
     const esc = (e) => e.key === 'Escape' && onCerrar()
     window.addEventListener('keydown', esc)
@@ -58,9 +59,11 @@ export function Hoja({ titulo, onCerrar, children }) {
       >
         <div className="mx-auto -mt-2 mb-3 h-1.5 w-10 rounded-full bg-slate-200 sm:hidden" />
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">{titulo}</h2>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            {icono && <Icono n={icono} size={24} className="text-marca-texto" />}{titulo}
+          </h2>
           <button onClick={onCerrar} className="rounded-full px-3 py-1 text-slate-500 hover:bg-slate-100" aria-label="Cerrar">
-            ✕
+            <Icono n="cerrar" size={20} weight="bold" />
           </button>
         </div>
         {children}

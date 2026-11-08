@@ -1,6 +1,6 @@
 // Service worker: hace la app instalable, abre rápido y muestra notificaciones.
 // Solo guarda los archivos de la app; los datos (Supabase) siempre van a la red.
-const CACHE = 'tienda-v4'
+const CACHE = 'tienda-v5'
 
 self.addEventListener('install', () => self.skipWaiting())
 

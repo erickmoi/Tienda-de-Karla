@@ -10,6 +10,7 @@ import InvitarAvisos from './components/InvitarAvisos'
 import Login from './pages/Login'
 import Menu from './pages/Menu'
 import MiCuenta from './pages/MiCuenta'
+import Icono from './components/Icono'
 // El panel de administración se descarga solo cuando se abre
 const Admin = lazy(() => import('./pages/admin/Admin'))
 
@@ -105,9 +106,9 @@ export default function App() {
   }
 
   const pestanas = [
-    { id: 'menu', titulo: 'Menú', icono: '🛒' },
-    { id: 'cuenta', titulo: 'Mi cuenta', icono: '👤', insignia: saldo > 0 ? dinero(saldo) : null },
-    ...(esPersonal(perfil) ? [{ id: 'admin', titulo: 'Admin', icono: '⚙️', insignia: pendientes > 0 ? String(pendientes) : null, alerta: true }] : []),
+    { id: 'menu', titulo: 'Menú', icono: 'carrito' },
+    { id: 'cuenta', titulo: 'Mi cuenta', icono: 'cuenta', insignia: saldo > 0 ? dinero(saldo) : null },
+    ...(esPersonal(perfil) ? [{ id: 'admin', titulo: 'Admin', icono: 'admin', insignia: pendientes > 0 ? String(pendientes) : null, alerta: true }] : []),
   ]
   const indice = Math.max(0, pestanas.findIndex((p) => p.id === vista))
 
@@ -158,9 +159,9 @@ export default function App() {
                   activa ? 'font-bold text-marca-texto' : 'font-medium text-slate-400'
                 }`}>
                 <span className={`relative flex h-8 w-14 items-center justify-center rounded-full text-xl transition-all duration-300 ${
-                  activa ? 'scale-110 bg-marca-claro' : 'scale-100 grayscale-[60%]'
+                  activa ? 'scale-110 bg-marca-claro' : 'scale-100'
                 }`}>
-                  {p.icono}
+                  <Icono n={p.icono} size={24} weight={activa ? 'duotone' : 'regular'} />
                   {p.insignia && (
                     <span className={`absolute -right-3 -top-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow ${
                       p.alerta ? 'animar-latido bg-amber-500' : 'bg-rose-600'}`}>

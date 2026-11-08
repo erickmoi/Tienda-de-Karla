@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { vibrar } from '../lib/tema'
 import { Hoja } from './ui'
+import Icono from './Icono'
 
 const TIPOS = { ahorro: 'Cuenta de ahorro', corriente: 'Cuenta corriente', billetera: 'Billetera / app', otro: 'Otro' }
 export const tipoCuenta = (t) => TIPOS[t] ?? t
@@ -54,7 +55,7 @@ function BotonCopiar({ texto }) {
   return (
     <button type="button" onClick={copiar}
       className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-bold transition ${copiado ? 'bg-emerald-600 text-white' : 'bg-marca-claro text-marca-texto'}`}>
-      {copiado ? '✓ Copiado' : '📋 Copiar'}
+      {copiado ? <><Icono n="check" size={13} className="mr-0.5 -mt-0.5 align-middle" />Copiado</> : <><Icono n="copiar" size={13} className="mr-0.5 -mt-0.5 align-middle" />Copiar</>}
     </button>
   )
 }
@@ -90,20 +91,20 @@ export function TarjetaCuenta({ c, elegida, onElegir }) {
                 {elegida && <span className="h-2 w-2 rounded-full bg-marca" />}
               </span>
             )}
-            🏦 {c.banco}
+            <Icono n="banco" size={18} className="text-marca-texto" />{c.banco}
           </p>
           <p className="text-xs text-slate-500">{tipoCuenta(c.tipo_cuenta)} · {c.titular}</p>
         </div>
         {c.qr_path && (
           <button type="button" onClick={(e) => { e.stopPropagation(); setVerQR(true) }}
-            className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">🔳 QR</button>
+            className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700"><Icono n="qr" size={14} className="mr-0.5 -mt-0.5 align-middle" />QR</button>
         )}
       </div>
       <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-2">
         <span className="font-mono text-base font-bold tracking-wide text-slate-900">{c.numero}</span>
         <BotonCopiar texto={c.numero} />
       </div>
-      {c.nota && <p className="mt-1.5 text-xs text-slate-600">💡 {c.nota}</p>}
+      {c.nota && <p className="mt-1.5 text-xs text-slate-600"><Icono n="antojo" size={13} className="mr-1 -mt-0.5 align-middle text-amber-500" />{c.nota}</p>}
       {verQR && <VerQR ruta={c.qr_path} banco={c.banco} onCerrar={() => setVerQR(false)} />}
     </div>
   )

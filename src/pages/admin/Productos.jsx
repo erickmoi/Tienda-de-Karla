@@ -5,9 +5,9 @@ import { dinero, mensajeError } from '../../lib/format'
 import FilaDeslizable from '../../components/FilaDeslizable'
 import { Cargando, Hoja, Vacio } from '../../components/ui'
 import { borrarFoto, prepararFoto, subirFoto } from '../../lib/fotos'
+import Icono, { IconoCategoria, SelectorIcono } from '../../components/Icono'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-const EMOJIS_CAT = ['🍿', '🍬', '🍪', '🥐', '🥤', '🍫', '🍭', '🧃', '☕', '🍞', '🥜', '🧁', '🍦', '🌮', '🛍️']
 
 const VACIO = { nombre: '', categoria_id: '', precio: '', costo: '', foto_url: null, agotado_manual: false, activo: true }
 
@@ -60,23 +60,23 @@ export default function Productos({ avisar }) {
   })
   const filtros = [
     { id: 'todas', nombre: `Todos (${productos.length})` },
-    ...categorias.map((c) => ({ id: c.id, nombre: `${c.emoji} ${c.nombre}` })),
-    { id: 'agotados', nombre: `⛔ Agotados (${productos.filter((p) => p.agotado).length})` },
-    { id: 'sincosto', nombre: `❔ Sin costo (${productos.filter((p) => !(Number(p.costo) > 0)).length})` },
+    ...categorias.map((c) => ({ id: c.id, nombre: c.nombre, icono: c.emoji })),
+    { id: 'agotados', ico: 'prohibido', nombre: `Agotados (${productos.filter((p) => p.agotado).length})` },
+    { id: 'sincosto', ico: 'alerta', nombre: `Sin costo (${productos.filter((p) => !(Number(p.costo) > 0)).length})` },
   ]
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         {puedeEditar && <button onClick={() => setEditando(VACIO)} className="btn-primario py-2 text-sm">+ Producto</button>}
-        {puedeInventario && <button onClick={() => setVerConteo(true)} className="btn-secundario py-2 text-sm">📋 Conteo</button>}
+        {puedeInventario && <button onClick={() => setVerConteo(true)} className="btn-secundario py-2 text-sm"><Icono n="conteo" size={17} className="mr-1 -mt-0.5 align-middle" />Conteo</button>}
         {puedeEditar && (
           <button onClick={() => (lote ? setLote(null) : setLote(new Set()))}
             className={`${lote ? 'btn-primario' : 'btn-secundario'} py-2 text-sm`}>
-            {lote ? '✕ Salir de lote' : '☑️ Editar en lote'}
+            {lote ? <><Icono n="cerrar" size={16} className="mr-1 -mt-0.5 align-middle" />Salir de lote</> : <><Icono n="editar" size={17} className="mr-1 -mt-0.5 align-middle" />Editar en lote</>}
           </button>
         )}
-        {puedeEditar && <button onClick={() => setVerCategorias(true)} className="btn-secundario py-2 text-sm">🗂️ Categorías</button>}
+        {puedeEditar && <button onClick={() => setVerCategorias(true)} className="btn-secundario py-2 text-sm"><Icono n="productos" size={17} className="mr-1 -mt-0.5 align-middle" />Categorías</button>}
       </div>
 
       <input className="input" type="search" placeholder="Buscar producto" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
@@ -85,6 +85,8 @@ export default function Productos({ avisar }) {
           <button key={f.id} onClick={() => setFiltro(f.id)}
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
               filtro === f.id ? 'bg-slate-800 text-slate-50' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'}`}>
+            {f.icono && <IconoCategoria valor={f.icono} size={14} className="mr-1 -mt-0.5 align-middle" />}
+            {f.ico && <Icono n={f.ico} size={14} className="mr-1 -mt-0.5 align-middle" />}
             {f.nombre}
           </button>
         ))}
@@ -112,8 +114,8 @@ export default function Productos({ avisar }) {
                 {lote && <input type="checkbox" checked={elegido} onChange={() => alternarLote(p.id)} aria-label={`Elegir ${p.nombre}`} />}
                 <button className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   onClick={() => (lote ? alternarLote(p.id) : puedeEditar && setEditando(p))}>
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-marca-claro text-lg">
-                    {p.foto_url ? <img src={p.foto_url} alt="" className="h-full w-full object-cover" /> : c?.emoji ?? '🛍️'}
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-marca-claro text-lg text-marca-texto">
+                    {p.foto_url ? <img src={p.foto_url} alt="" className="h-full w-full object-cover" /> : <IconoCategoria valor={c?.emoji ?? 'shopping-bag'} size={22} />}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-slate-900">{p.nombre}</span>
@@ -126,7 +128,7 @@ export default function Productos({ avisar }) {
                   <button onClick={() => puedeInventario && setStockDe(p)} disabled={!puedeInventario}
                     className={`shrink-0 rounded-lg px-2.5 py-1 text-sm font-bold tabular-nums ${
                       p.agotado ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
-                    {p.agotado ? (p.agotado_manual ? '⛔' : '0') : p.stock}
+                    {p.agotado ? (p.agotado_manual ? <Icono n="prohibido" size={16} /> : '0') : p.stock}
                   </button>
                 )}
               </li>
@@ -176,7 +178,7 @@ function Conteo({ productos, categorias, avisar, onCerrar, onGuardado }) {
   const q = sinAcentos(busqueda.trim())
   const grupos = categorias.map((c) => ({ c, ps: productos.filter((p) => p.categoria_id === c.id && p.activo) }))
   const sinCat = productos.filter((p) => p.activo && !categorias.some((c) => c.id === p.categoria_id))
-  if (sinCat.length) grupos.push({ c: { id: 0, nombre: 'Sin categoría', emoji: '🛍️' }, ps: sinCat })
+  if (sinCat.length) grupos.push({ c: { id: 0, nombre: 'Sin categoría', emoji: 'shopping-bag' }, ps: sinCat })
 
   async function guardar() {
     if (!cambios.length) return onCerrar()
@@ -192,7 +194,7 @@ function Conteo({ productos, categorias, avisar, onCerrar, onGuardado }) {
   }
 
   return (
-    <Hoja titulo="📋 Conteo de inventario" onCerrar={onCerrar}>
+    <Hoja titulo="Conteo de inventario" icono="conteo" onCerrar={onCerrar}>
       <p className="mb-2 text-sm text-slate-500">Escribe cuántos hay de cada producto. Solo se guardan los que cambian.</p>
       <input className="input mb-3" type="search" placeholder="Buscar producto" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
       <div className="space-y-4">
@@ -201,7 +203,7 @@ function Conteo({ productos, categorias, avisar, onCerrar, onGuardado }) {
           if (!lista.length) return null
           return (
             <section key={c.id}>
-              <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500">{c.emoji} {c.nombre}</h4>
+              <h4 className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-500"><IconoCategoria valor={c.emoji} size={14} className="mr-1 -mt-0.5 align-middle" />{c.nombre}</h4>
               <ul className="divide-y divide-slate-100">
                 {lista.map((p) => {
                   const cambio = valores[p.id] !== '' && Number(valores[p.id]) !== p.stock
@@ -275,7 +277,7 @@ function EdicionLote({ ids, categorias, avisar, onCerrar, onGuardado }) {
           <label className="etiqueta" htmlFor="lcat">Categoría</label>
           <select id="lcat" className="input" value={f.categoria_id} onChange={set('categoria_id')}>
             <option value="">— Sin cambiar —</option>
-            {categorias.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.nombre}</option>)}
+            {categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             <option value="ninguna">Sin categoría</option>
           </select>
         </div>
@@ -369,14 +371,14 @@ function FormProducto({ producto, categorias, avisar, onCerrar, onGuardado }) {
       <form onSubmit={guardar} className="space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-marca-claro text-3xl">
-            {vista ? <img src={vista} alt="" className="h-full w-full object-cover" /> : '🍬'}
+            {vista ? <img src={vista} alt="" className="h-full w-full object-cover" /> : <Icono n="productos" size={32} className="text-marca-texto" />}
           </div>
           <div className="flex flex-col gap-2">
             <label className="btn-secundario cursor-pointer py-1.5 text-center text-sm">
               {vista ? 'Cambiar foto' : 'Agregar foto'}
               <input type="file" accept="image/*" className="hidden" onChange={elegirFoto} />
             </label>
-            {archivo && <p className="text-xs text-slate-500">✨ Ajustada: cuadrada y centrada</p>}
+            {archivo && <p className="text-xs text-slate-500"><Icono n="todo" size={13} className="mr-0.5 -mt-0.5 align-middle" />Ajustada: cuadrada y centrada</p>}
             {vista && (
               <button type="button" className="text-sm font-semibold text-red-600"
                 onClick={() => { setArchivo(null); setVista(null); setQuitarFoto(true) }}>
@@ -480,7 +482,7 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
     e.preventDefault()
     if (!nombre.trim()) return
     const { error } = await supabase.from('categorias')
-      .insert({ nombre: nombre.trim(), orden: categorias.length })
+      .insert({ nombre: nombre.trim(), orden: categorias.length, emoji: 'shopping-bag' })
     if (error) return avisar('error', mensajeError(error))
     setNombre('')
     onCambio()
@@ -520,8 +522,8 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
             <li key={c.id} className="py-2">
               <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
-                <button onClick={() => setEligiendo(eligiendo === c.id ? null : c.id)} aria-label="Cambiar emoji"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-xl">{c.emoji}</button>
+                <button onClick={() => setEligiendo(eligiendo === c.id ? null : c.id)} aria-label="Cambiar ícono"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-marca-claro text-marca-texto"><IconoCategoria valor={c.emoji} size={22} /></button>
                 <span className={c.activo ? 'text-slate-900' : 'text-slate-400 line-through'}>{c.nombre}</span>
               </span>
               <div className="flex gap-2">
@@ -532,11 +534,8 @@ function Categorias({ categorias, avisar, onCerrar, onCambio }) {
               </div>
               </div>
               {eligiendo === c.id && (
-                <div className="animar-entrada mt-2 grid grid-cols-8 gap-1">
-                  {EMOJIS_CAT.map((em) => (
-                    <button key={em} onClick={() => cambiarEmoji(c, em)}
-                      className={`aspect-square rounded-lg text-xl ${c.emoji === em ? 'bg-marca-claro ring-2 ring-marca' : 'bg-slate-100'}`}>{em}</button>
-                  ))}
+                <div className="animar-entrada mt-2">
+                  <SelectorIcono valor={c.emoji} onCambio={(k) => cambiarEmoji(c, k)} />
                 </div>
               )}
             </li>

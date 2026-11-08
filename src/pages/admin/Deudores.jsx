@@ -8,10 +8,11 @@ import { fecha } from '../../lib/format'
 import { vibrar } from '../../lib/tema'
 import { useApariencia } from '../../lib/apariencia'
 import { invocar } from '../../lib/funciones'
+import Icono from '../../components/Icono'
 
 // wa.me con el número (se asume El Salvador, 503, si tiene 8 dígitos) o sin número para elegir contacto
 function enlaceWhatsApp(cliente, telefono, tienda) {
-  const texto = `Hola ${cliente.nombre.split(' ')[0]} 👋, tu saldo pendiente en ${tienda} es de ${dinero(cliente.saldo)}. ¡Gracias!`
+  const texto = `Hola ${cliente.nombre.split(' ')[0]}, tu saldo pendiente en ${tienda} es de ${dinero(cliente.saldo)}. ¡Gracias!`
   const numero = telefono ? (telefono.length === 8 ? `503${telefono}` : telefono) : ''
   return `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`
 }
@@ -198,10 +199,10 @@ function DetalleCliente({ cliente, avisar, onCerrar, onCambio }) {
         <div className="mb-5 grid grid-cols-2 gap-2">
           <a href={enlaceWhatsApp(cliente, telefono, nombreTienda)} target="_blank" rel="noopener noreferrer"
             className="btn flex items-center justify-center gap-1.5 bg-emerald-600 text-sm text-white">
-            💬 WhatsApp
+            <Icono n="whatsapp" size={18} />WhatsApp
           </a>
           <button type="button" onClick={recordar} disabled={recordando} className="btn-secundario text-sm">
-            {recordando ? 'Enviando…' : '🔔 Recordar'}
+            {recordando ? 'Enviando…' : <><Icono n="notificaciones" size={17} className="mr-1 -mt-0.5 align-middle" />Recordar</>}
           </button>
           {!telefono && (
             <p className="col-span-2 text-xs text-slate-500">
@@ -293,7 +294,7 @@ function PorAprobar({ pendientes, nombreDe, avisar, onCambio }) {
   return (
     <section className="animar-entrada rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
       <h3 className="mb-2 flex items-center gap-2 font-bold text-amber-800">
-        <span className="animar-latido inline-block">⏳</span> Por aprobar ({pendientes.length})
+        <Icono n="espera" size={20} className="animar-latido" /> Por aprobar ({pendientes.length})
       </h3>
       <ul className="space-y-2">
         {pendientes.map((r) => (
@@ -315,7 +316,7 @@ function PorAprobar({ pendientes, nombreDe, avisar, onCambio }) {
               </button>
               <button disabled={ocupado === r.id} onClick={() => revisar(r, true)}
                 className="btn bg-emerald-600 py-1.5 text-sm text-white">
-                ✓ Aprobar
+                <Icono n="check" size={16} className="mr-1 -mt-0.5 align-middle" />Aprobar
               </button>
             </div>
           </li>

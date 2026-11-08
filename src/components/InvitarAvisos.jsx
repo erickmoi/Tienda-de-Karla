@@ -4,6 +4,7 @@ import { mensajeError } from '../lib/format'
 import { vibrar } from '../lib/tema'
 import { Hoja } from './ui'
 import { PasosIOS } from './GuiaInstalar'
+import Icono from './Icono'
 
 const CLAVE = 'tienda.avisos.pospuesto'
 const DIAS_ESPERA = 3
@@ -43,7 +44,7 @@ export default function InvitarAvisos({ encargada, pendiente = false, avisar, li
     try {
       await activarPush()
       vibrar([10, 40, 10])
-      avisar?.('ok', '🔔 Listo, te llegarán los avisos.')
+      avisar?.('ok', 'Listo, te llegarán los avisos.')
       setAbierta(false)
     } catch (err) {
       avisar?.('error', mensajeError(err))
@@ -55,16 +56,18 @@ export default function InvitarAvisos({ encargada, pendiente = false, avisar, li
   }
 
   const beneficios = pendiente
-    ? [`✅ Cuando ${encargada} apruebe tu cuenta`, '💵 Cuando te confirmen un pago', '💸 Tu saldo en días de quincena']
-    : ['💵 Cuando te confirmen un pago', '💸 Tu saldo en días de quincena', '🔥 Promos y avisos de la tienda']
+    ? [['ok', `Cuando ${encargada} apruebe tu cuenta`], ['efectivo', 'Cuando te confirmen un pago'], ['recibo', 'Tu saldo en días de quincena']]
+    : [['efectivo', 'Cuando te confirmen un pago'], ['recibo', 'Tu saldo en días de quincena'], ['promo', 'Promos y avisos de la tienda']]
 
   return (
-    <Hoja titulo="🔔 Activa los avisos" onCerrar={cerrar}>
+    <Hoja titulo="Activa los avisos" icono="notificaciones" onCerrar={cerrar}>
       <div className="space-y-4">
         <p className="text-sm text-slate-600">Te avisamos en tu celular, aunque la app esté cerrada:</p>
         <ul className="space-y-2">
-          {beneficios.map((b) => (
-            <li key={b} className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800">{b}</li>
+          {beneficios.map(([ic, b]) => (
+            <li key={b} className="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800">
+              <Icono n={ic} size={20} className="text-marca-texto" />{b}
+            </li>
           ))}
         </ul>
         {ios ? (

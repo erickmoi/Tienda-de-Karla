@@ -11,6 +11,7 @@ import { FormaDePago } from '../components/ListaCompras'
 import FilaDeslizable from '../components/FilaDeslizable'
 import GuiaInstalar from '../components/GuiaInstalar'
 import Antojos from '../components/Antojos'
+import Icono, { IconoCategoria } from '../components/Icono'
 import { avisoDescartado, descartarAviso, estaInstalada } from '../lib/instalar'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -66,7 +67,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
     if (!f.error) setFavoritos(new Set(f.data.map((x) => x.producto_id)))
   }, [avisar, perfil.id])
 
-  // ⭐ Marcar / quitar favorito (cambia al instante; si falla, se revierte)
+  // Marcar / quitar favorito (cambia al instante; si falla, se revierte)
   const alternarFavorito = useCallback(async (id) => {
     vibrar(8)
     const era = favoritos.has(id)
@@ -208,7 +209,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
 
     if (!navigator.onLine) {
       encolar(pedido)
-      return terminar('Guardada 📶', 'Sin internet: se enviará sola cuando vuelva la conexión.')
+      return terminar('Guardada', 'Sin internet: se enviará sola cuando vuelva la conexión.')
     }
 
     setRegistrando(true)
@@ -220,7 +221,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
     if (error) {
       if (esErrorDeRed(error)) {
         encolar(pedido)
-        return terminar('Guardada 📶', 'La conexión falló: se enviará sola cuando vuelva.')
+        return terminar('Guardada', 'La conexión falló: se enviará sola cuando vuelva.')
       }
       avisar('error', mensajeError(error))
       cargar()
@@ -228,7 +229,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
     }
     terminar('¡Registrado!', conPago
       ? apariencia.pagos_auto ? `Compra pagada: ${dinero(total)}. ¡Buen provecho!` : `Pago de ${dinero(total)} enviado a ${encargada} para aprobar.`
-      : `${dinero(total)} a tu cuenta.${ahorro > 0 ? ` Ahorraste ${dinero(ahorro)} 🎉` : ' ¡Buen provecho!'}`)
+      : `${dinero(total)} a tu cuenta.${ahorro > 0 ? ` Ahorraste ${dinero(ahorro)}` : ' ¡Buen provecho!'}`)
     cargar()
     onCompra?.()
   }
@@ -236,7 +237,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
   if (!productos) return <EsqueletoMenu columnas={columnas} />
 
   const chips = [
-    { id: 'todas', nombre: 'Todo', emoji: '✨' },
+    { id: 'todas', nombre: 'Todo', emoji: 'sparkle' },
     ...categorias,
   ]
 
@@ -245,33 +246,33 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
       {/* Avisos de estado */}
       {!enLinea && (
         <p className="mb-2 rounded-xl bg-slate-800 px-3 py-2 text-center text-sm font-medium text-slate-50">
-          📶 Sin conexión. Puedes registrar y se enviará cuando vuelva.
+          <Icono n="sinRed" size={16} className="mr-1 -mt-0.5 align-middle" />Sin conexión. Puedes registrar y se enviará cuando vuelva.
         </p>
       )}
       {enCola > 0 && enLinea && (
         <button onClick={sincronizar} className="mb-2 w-full rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 ring-1 ring-amber-200">
-          ⏳ {enCola === 1 ? '1 compra guardada' : `${enCola} compras guardadas`} por enviar · Enviar ahora
+          <Icono n="espera" size={16} className="mr-1 -mt-0.5 align-middle" />{enCola === 1 ? '1 compra guardada' : `${enCola} compras guardadas`} por enviar · Enviar ahora
         </button>
       )}
       {avisoInstalar && (
         <div className="animar-entrada mb-2 flex items-center gap-3 rounded-2xl bg-marca-claro p-3">
-          <span className="text-2xl">📲</span>
+          <Icono n="celular" size={28} className="text-marca-texto" />
           <button onClick={() => setVerGuia(true)} className="min-w-0 flex-1 text-left">
             <span className="block text-sm font-bold text-marca-texto">Instala la app en tu celular</span>
             <span className="block text-xs text-slate-600">Abre más rápido y te llegan los avisos. Toca para ver cómo.</span>
           </button>
           <button onClick={() => { descartarAviso(); setAvisoInstalar(false) }} aria-label="Ocultar aviso"
-            className="shrink-0 px-1 text-slate-400">✕</button>
+            className="shrink-0 px-1 text-slate-400"><Icono n="cerrar" size={18} weight="bold" /></button>
         </div>
       )}
       {verGuia && (
-        <Hoja titulo="📲 Instalar la app" onCerrar={() => setVerGuia(false)}>
+        <Hoja titulo="Instalar la app" icono="celular" onCerrar={() => setVerGuia(false)}>
           <GuiaInstalar onInstalada={() => { setVerGuia(false); setAvisoInstalar(false) }} />
         </Hoja>
       )}
       {cerrada && (
         <p className="mb-2 rounded-xl bg-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700">
-          🔒 {apariencia.mensaje_cerrado}
+          <Icono n="bloqueo" size={16} className="mr-1 -mt-0.5 align-middle" />{apariencia.mensaje_cerrado}
         </p>
       )}
 
@@ -289,17 +290,17 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
           <div className="flex items-center gap-1.5">
             {/* Atajos fijos: buscar, favoritos y promos */}
             {[
-              { id: 'buscar', icono: '🔎', nombre: 'Buscar' },
-              { id: 'favoritos', icono: '⭐', nombre: 'Favoritos' },
-              ...(promos.length ? [{ id: 'promos', icono: '🔥', nombre: 'Promos', promo: true }] : []),
+              { id: 'buscar', icono: 'buscar', nombre: 'Buscar' },
+              { id: 'favoritos', icono: 'favorito', nombre: 'Favoritos' },
+              ...(promos.length ? [{ id: 'promos', icono: 'promo', nombre: 'Promos', promo: true }] : []),
             ].map((a) => {
               const activo = catActiva === a.id
               return (
                 <button key={a.id} aria-label={a.nombre} aria-pressed={a.id === 'buscar' ? undefined : activo}
                   onClick={() => { vibrar(6); if (a.id === 'buscar') setBuscando(true); else setCatActiva(activo ? 'todas' : a.id) }}
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition-all duration-200 ${
-                    activo ? (a.promo ? 'bg-orange-500 shadow' : 'bg-marca shadow') : a.promo ? 'bg-orange-50 ring-1 ring-orange-200' : 'bg-superficie ring-1 ring-slate-200'}`}>
-                  {a.icono}
+                    activo ? (a.promo ? 'bg-orange-500 text-white shadow' : 'bg-marca text-sobre-marca shadow') : a.promo ? 'bg-orange-50 text-orange-600 ring-1 ring-orange-200' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'}`}>
+                  <Icono n={a.icono} size={20} weight={activo ? 'fill' : 'duotone'} />
                 </button>
               )
             })}
@@ -311,7 +312,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
                     className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
                       catActiva === c.id ? 'bg-marca text-sobre-marca shadow' : 'bg-superficie text-slate-600 ring-1 ring-slate-200'
                     }`}>
-                    {c.emoji} {c.nombre}
+                    <IconoCategoria valor={c.emoji} size={17} className="mr-1 -mt-0.5 align-middle" />{c.nombre}
                   </button>
                 ))}
               </FilaDeslizable>
@@ -332,11 +333,11 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
           <div className="py-8 text-center">
             <p className="text-slate-500">No encontramos “{busqueda.trim()}”.</p>
             <button onClick={() => setAntojos(busqueda.trim())} className="btn-secundario mt-3 text-sm">
-              💡 Pedirle a {encargada} que lo traiga
+              <Icono n="antojo" size={18} className="mr-1 -mt-0.5 align-middle" />Pedirle a {encargada} que lo traiga
             </button>
           </div>
         ) : catActiva === 'favoritos' ? (
-          <Vacio>Toca la ⭐ de un producto para guardarlo aquí.</Vacio>
+          <Vacio>Toca la estrella de un producto para guardarlo aquí.</Vacio>
         ) : <Vacio>No hay productos aquí todavía.</Vacio>
       ) : (
         <div key={`${catActiva}-${busqueda ? 'b' : ''}`} className={`escalonado grid ${GRID[columnas] ?? GRID[2]}`}>
@@ -363,7 +364,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
       {!busqueda && (
         <button onClick={() => setAntojos('')}
           className="tarjeta mt-4 flex w-full items-center gap-3 p-3 text-left transition active:scale-[0.98]">
-          <span className="text-2xl">💡</span>
+          <Icono n="antojo" size={28} className="text-amber-500" />
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-bold text-slate-900">¿No encuentras lo que se te antoja?</span>
             <span className="block text-xs text-slate-500">Pídele a {encargada} que lo traiga o vota por lo que otros pidieron</span>
@@ -412,7 +413,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
             const falta = faltaParaPromo(pr, carrito)
             return falta ? (
               <p key={pr.id} className="mt-2 rounded-lg bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700">
-                🔥 Agrega {falta} más de “{pr.nombre}” y activas {etiquetaPromo(pr)}
+                <Icono n="promo" size={14} className="mr-1 -mt-0.5 align-middle" />Agrega {falta} más de “{pr.nombre}” y activas {etiquetaPromo(pr)}
               </p>
             ) : null
           })}
@@ -423,7 +424,7 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
                 <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">{dinero(subtotal)}</span></div>
                 {descuentos.map((d) => (
                   <div key={d.promo.id} className="flex justify-between font-medium text-orange-600">
-                    <span>🔥 {d.promo.nombre}{d.veces > 1 ? ` ×${d.veces}` : ''}</span>
+                    <span><Icono n="promo" size={14} className="mr-1 -mt-0.5 align-middle" />{d.promo.nombre}{d.veces > 1 ? ` ×${d.veces}` : ''}</span>
                     <span className="tabular-nums">−{dinero(d.descuento)}</span>
                   </div>
                 ))}
@@ -442,9 +443,9 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
                   className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-superficie shadow transition-transform duration-300"
                   style={{ transform: pagado ? 'translateX(100%)' : 'none' }} />
                 <button type="button" onClick={() => setPagado(false)}
-                  className={`relative py-2.5 ${!pagado ? 'text-marca-texto' : 'text-slate-500'}`}>📒 A mi cuenta</button>
+                  className={`relative py-2.5 ${!pagado ? 'text-marca-texto' : 'text-slate-500'}`}><Icono n="nota" size={16} className="mr-1 -mt-0.5 align-middle" />A mi cuenta</button>
                 <button type="button" onClick={() => setPagado(true)}
-                  className={`relative py-2.5 ${pagado ? 'text-marca-texto' : 'text-slate-500'}`}>💵 Ya pagué</button>
+                  className={`relative py-2.5 ${pagado ? 'text-marca-texto' : 'text-slate-500'}`}><Icono n="efectivo" size={16} className="mr-1 -mt-0.5 align-middle" />Ya pagué</button>
               </div>
               {pagado && (
                 <div className="animar-entrada">
@@ -458,15 +459,15 @@ export default function Menu({ avisar, onCompra, saldo = 0 }) {
           {pasaLimite && (
             <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${apariencia.limite_bloquea ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'}`}>
               {apariencia.limite_bloquea
-                ? `⛔ Con esta compra pasarías tu límite de ${dinero(limite)}. Paga lo pendiente o marca “Ya pagué”.`
-                : `⚠️ Con esta compra quedarías debiendo ${dinero(quedaria)} (tu límite es ${dinero(limite)}).`}
+                ? `Con esta compra pasarías tu límite de ${dinero(limite)}. Paga lo pendiente o marca “Ya pagué”.`
+                : `Con esta compra quedarías debiendo ${dinero(quedaria)} (tu límite es ${dinero(limite)}).`}
             </p>
           )}
 
           <button onClick={registrar}
             disabled={registrando || totalUnidades === 0 || cerrada || (pasaLimite && apariencia.limite_bloquea)}
             className="btn-primario mt-4 w-full">
-            {cerrada ? '🔒 Tienda cerrada'
+            {cerrada ? 'Tienda cerrada'
               : registrando ? 'Registrando…'
               : pagado && apariencia.pagos_clientes ? (apariencia.pagos_auto ? 'Registrar como pagada' : 'Registrar y avisar pago')
               : 'Registrar compra'}
@@ -489,7 +490,7 @@ function TarjetaPromo({ pr, porId, carrito }) {
   const falta = faltaParaPromo(pr, carrito)
   return (
     <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 p-3 text-white shadow">
-      <span aria-hidden="true" className="absolute -right-4 -top-6 text-7xl opacity-20">🔥</span>
+      <Icono n="promo" size={88} className="absolute -right-4 -top-5 opacity-25" />
       <div className="relative flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-bold">{pr.nombre}</p>
@@ -521,7 +522,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
     </span>
   ) : null
   const promoTag = promo && !p.agotado ? (
-    <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">🔥 {etiquetaPromo(promo)}</span>
+    <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"><Icono n="promo" size={11} weight="fill" className="mr-0.5 -mt-px align-middle" />{etiquetaPromo(promo)}</span>
   ) : null
 
   const imagen = (tam) => (
@@ -529,7 +530,8 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
       style={p.foto_url ? undefined : { background: `color-mix(in oklab, ${cat?.tinte ?? '#e2e8f0'} 55%, var(--color-superficie))` }}>
       {p.foto_url
         ? <img src={p.foto_url} alt="" loading="lazy" className="h-full w-full object-cover" />
-        : <span className={lista ? 'text-2xl' : compacta ? '-mt-6 text-2xl' : '-mt-8 text-4xl'}>{cat?.emoji ?? '🛍️'}</span>}
+        : <IconoCategoria valor={cat?.emoji ?? 'shopping-bag'} size={lista ? 26 : compacta ? 30 : 44}
+            className={`text-slate-700/80 ${lista ? '' : compacta ? '-mt-6' : '-mt-8'}`} />}
     </span>
   )
 
@@ -545,7 +547,7 @@ function TarjetaProducto({ p, modo, enCarrito, pop, onCambiar, tour, cat, promo,
       aria-label={favorito ? `Quitar ${p.nombre} de favoritos` : `Marcar ${p.nombre} como favorito`}
       className={`flex h-7 w-7 items-center justify-center rounded-full text-sm transition active:scale-75 ${
         favorito ? 'bg-amber-400/95 text-white shadow-sm' : lista ? 'text-slate-300' : 'bg-superficie/70 text-slate-400 backdrop-blur'}`}>
-      {favorito ? '★' : '☆'}
+      <Icono n="favorito" size={15} weight={favorito ? 'fill' : 'regular'} />
     </button>
   )
   const control = p.agotado ? (

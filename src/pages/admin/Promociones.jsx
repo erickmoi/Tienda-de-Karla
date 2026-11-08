@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { dinero, mensajeError } from '../../lib/format'
 import { etiquetaPromo } from '../../lib/promos'
 import { Cargando, Hoja, Interruptor, Vacio } from '../../components/ui'
+import Icono from '../../components/Icono'
 
 const sinAcentos = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const hoySV = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador' }).format(new Date())
@@ -36,7 +37,7 @@ export default function Promociones({ avisar }) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-orange-50 p-3 text-sm text-orange-800 ring-1 ring-orange-200">
-        Las promociones activas aparecen en la pastilla <b>🔥 Promos</b> del menú y con una etiqueta en cada producto.
+        Las promociones activas aparecen en el botón de <b>fuego (Promos)</b> del menú y con una etiqueta en cada producto.
         El descuento se calcula solo en el carrito.
       </div>
       <button onClick={() => setEditando({ nombre: '', tipo: 'cantidad', cantidad: 2, precio: '', activo: true, desde: '', hasta: '', productos: {} })}
@@ -54,7 +55,7 @@ export default function Promociones({ avisar }) {
                 })} className="tarjeta w-full p-3 text-left">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-slate-900">🔥 {pr.nombre}</p>
+                      <p className="font-semibold text-slate-900"><Icono n="promo" size={16} className="mr-1 -mt-0.5 align-middle text-orange-500" />{pr.nombre}</p>
                       <p className="truncate text-xs text-slate-500">
                         {pr.promocion_productos.map((pp) => porId[pp.producto_id]?.nombre).filter(Boolean).join(', ') || 'Sin productos'}
                       </p>
@@ -172,7 +173,7 @@ function EditarPromo({ promo, productos, avisar, onCerrar, onGuardado }) {
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
-          {[['cantidad', '🔢 Varios por $', 'ej. 2 por $0.25'], ['combo', '🎁 Combo', 'ej. Coca + Diana']].map(([k, t, d]) => (
+          {[['cantidad', 'Varios por $', 'ej. 2 por $0.25'], ['combo', 'Combo', 'ej. Coca + Diana']].map(([k, t, d]) => (
             <button key={k} type="button" onClick={() => set('tipo', k)}
               className={`rounded-xl p-2.5 text-left transition ${f.tipo === k ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-700'}`}>
               {t}<span className="block text-xs font-normal opacity-80">{d}</span>

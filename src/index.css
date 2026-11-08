@@ -46,6 +46,8 @@
 html, body, #root { min-height: 100%; }
 /* Nada puede ensanchar la página hacia los lados (evita que el celular la achique) */
 html, body { overflow-x: clip; }
+/* Íconos SVG: llenan su caja y toman el color del texto */
+.icono > svg { display: block; width: 100%; height: 100%; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;

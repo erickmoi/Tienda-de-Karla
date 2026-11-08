@@ -13,18 +13,19 @@ import Caja from './Caja'
 import CampoClave from '../../components/CampoClave'
 import { adminVencido, entrarConClave, marcarActividadAdmin, MINUTOS_BLOQUEO } from '../../lib/acceso'
 import { mensajeError } from '../../lib/format'
+import Icono from '../../components/Icono'
 
 export default function Admin({ avisar, pendientes = 0, onPendientes }) {
   const { perfil } = useAuth()
   const secciones = [
-    { id: 'deudores', icono: '💵', titulo: 'Deudores', insignia: pendientes, ver: puede(perfil, 'deudores') || puede(perfil, 'pagos'), C: Deudores },
-    { id: 'caja', icono: '💰', titulo: 'Caja', ver: puede(perfil, 'pagos') || puede(perfil, 'estadisticas'), C: Caja },
-    { id: 'productos', icono: '🏷️', titulo: 'Productos', ver: puede(perfil, 'productos') || puede(perfil, 'inventario'), C: Productos },
-    { id: 'promos', icono: '🔥', titulo: 'Promos', ver: puede(perfil, 'productos'), C: Promociones },
-    { id: 'estadisticas', icono: '📊', titulo: 'Estadísticas', ver: puede(perfil, 'estadisticas'), C: Estadisticas },
-    { id: 'usuarios', icono: '👥', titulo: 'Usuarios', ver: puede(perfil, 'usuarios'), C: Usuarios },
-    { id: 'ajustes', icono: '⚙️', titulo: 'Ajustes', ver: puede(perfil, 'ajustes'), C: Ajustes },
-    { id: 'bitacora', icono: '📜', titulo: 'Bitácora', ver: esJefatura(perfil), C: Bitacora },
+    { id: 'deudores', icono: 'deudores', titulo: 'Deudores', insignia: pendientes, ver: puede(perfil, 'deudores') || puede(perfil, 'pagos'), C: Deudores },
+    { id: 'caja', icono: 'caja', titulo: 'Caja', ver: puede(perfil, 'pagos') || puede(perfil, 'estadisticas'), C: Caja },
+    { id: 'productos', icono: 'productos', titulo: 'Productos', ver: puede(perfil, 'productos') || puede(perfil, 'inventario'), C: Productos },
+    { id: 'promos', icono: 'promo', titulo: 'Promos', ver: puede(perfil, 'productos'), C: Promociones },
+    { id: 'estadisticas', icono: 'estadisticas', titulo: 'Estadísticas', ver: puede(perfil, 'estadisticas'), C: Estadisticas },
+    { id: 'usuarios', icono: 'usuarios', titulo: 'Usuarios', ver: puede(perfil, 'usuarios'), C: Usuarios },
+    { id: 'ajustes', icono: 'admin', titulo: 'Ajustes', ver: puede(perfil, 'ajustes'), C: Ajustes },
+    { id: 'bitacora', icono: 'bitacora', titulo: 'Bitácora', ver: esJefatura(perfil), C: Bitacora },
   ].filter((s) => s.ver)
   const [activa, setActiva] = useState(null) // null = cuadrícula de secciones
 
@@ -61,7 +62,7 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
         {secciones.map((s) => (
           <button key={s.id} onClick={() => abrir(s.id)}
             className="relative flex flex-col items-center gap-1 rounded-2xl bg-superficie px-1 py-3 shadow-sm ring-1 ring-slate-200 transition active:scale-95">
-            <span className="text-2xl">{s.icono}</span>
+            <Icono n={s.icono} size={30} className="text-marca-texto" />
             <span className="w-full truncate text-center text-[11px] font-semibold text-slate-700">{s.titulo}</span>
             {s.insignia > 0 && (
               <span className="absolute right-1.5 top-1.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">{s.insignia}</span>
@@ -78,21 +79,21 @@ export default function Admin({ avisar, pendientes = 0, onPendientes }) {
       {/* Atajos: volver a la cuadrícula o saltar a otra sección */}
       <div className="flex items-center gap-1">
         <button onClick={() => setActiva(null)} aria-label="Volver al panel"
-          className="shrink-0 rounded-full bg-superficie px-3 py-1.5 text-sm font-semibold text-marca-texto ring-1 ring-slate-200">‹ Panel</button>
+          className="flex h-9 shrink-0 items-center rounded-full bg-superficie px-3 text-sm font-semibold text-marca-texto ring-1 ring-slate-200">‹ Panel</button>
         <div className="min-w-0 flex-1">
         <FilaDeslizable>
           {secciones.map((s) => (
             <button key={s.id} onClick={() => abrir(s.id)} aria-label={s.titulo}
-              className={`relative shrink-0 rounded-full px-2.5 py-1.5 text-base transition ${
-                actual.id === s.id ? 'bg-marca text-sobre-marca shadow' : 'bg-superficie ring-1 ring-slate-200'}`}>
-              {s.icono}
+              className={`relative flex h-9 w-11 shrink-0 items-center justify-center rounded-full transition ${
+                actual.id === s.id ? 'bg-marca text-sobre-marca shadow' : 'bg-superficie text-marca-texto ring-1 ring-slate-200'}`}>
+              <Icono n={s.icono} size={20} />
               {s.insignia > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-500" />}
             </button>
           ))}
         </FilaDeslizable>
         </div>
       </div>
-      {actual.id !== 'ajustes' && <h2 className="text-lg font-bold text-slate-900">{actual.icono} {actual.titulo}</h2>}
+      {actual.id !== 'ajustes' && <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Icono n={actual.icono} size={24} className="text-marca-texto" />{actual.titulo}</h2>}
       <div key={actual.id} className="animar-entrada">
         <Actual avisar={avisar} onPendientes={onPendientes} />
       </div>
@@ -122,7 +123,7 @@ function Desbloquear({ usuario, onListo }) {
 
   return (
     <form onSubmit={enviar} className="animar-entrada tarjeta mx-auto mt-6 max-w-sm space-y-4 text-center">
-      <div className="animar-pop text-5xl">🔒</div>
+      <Icono n="bloqueo" size={52} className="animar-pop mx-auto text-marca-texto" />
       <div>
         <h2 className="text-lg font-bold text-slate-900">Panel bloqueado</h2>
         <p className="text-sm text-slate-500">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   alCambiarInstalable, esSamsung, estaInstalada, instalarDirecto, navegadorIOS, plataforma, puedeInstalarDirecto,
 } from '../lib/instalar'
+import Icono from './Icono'
 
 // Íconos dibujados para que la persona reconozca qué botón tocar
 const IconoCompartir = () => (
@@ -48,7 +49,7 @@ export function PasosIOS() {
 export function PasosAndroid() {
   return esSamsung() ? (
     <ol className="space-y-3">
-      <Paso n={1}>Toca el menú <b>☰</b> abajo a la derecha.</Paso>
+      <Paso n={1}>Toca el menú <b>≡</b> abajo a la derecha.</Paso>
       <Paso n={2}>Toca <b>“Agregar página a”</b> y luego <b>“Pantalla de inicio”</b>.</Paso>
       <Paso n={3}>Confirma con <b>“Agregar”</b>.</Paso>
     </ol>
@@ -68,19 +69,19 @@ export default function GuiaInstalar({ onInstalada }) {
   useEffect(() => alCambiarInstalable(setDirecto), [])
 
   if (estaInstalada()) {
-    return <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-700">✅ Ya estás usando la app instalada.</p>
+    return <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-700"><Icono n="ok" size={17} className="mr-1 -mt-0.5 align-middle" />Ya estás usando la app instalada.</p>
   }
 
   return (
     <div className="space-y-4">
       {directo && (
         <button onClick={async () => { if (await instalarDirecto()) onInstalada?.() }}
-          className="btn-primario w-full text-base">📲 Instalar con un toque</button>
+          className="btn-primario w-full text-base"><Icono n="celular" size={20} className="mr-1 -mt-0.5 align-middle" />Instalar con un toque</button>
       )}
       <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 text-sm font-semibold">
-        {[['ios', '📱 iPhone'], ['android', '🤖 Android']].map(([k, t]) => (
+        {[['ios', 'iPhone', 'celular'], ['android', 'Android', 'robot']].map(([k, t, ic]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`rounded-lg py-2 ${tab === k ? 'bg-superficie text-marca-texto shadow' : 'text-slate-500'}`}>{t}</button>
+            className={`rounded-lg py-2 ${tab === k ? 'bg-superficie text-marca-texto shadow' : 'text-slate-500'}`}><Icono n={ic} size={17} className="mr-1 -mt-0.5 align-middle" />{t}</button>
         ))}
       </div>
       <div key={tab} className="animar-entrada">{tab === 'ios' ? <PasosIOS /> : <PasosAndroid />}</div>

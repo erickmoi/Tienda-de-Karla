@@ -4,6 +4,7 @@ import { mensajeError } from '../../lib/format'
 import { borrarQR, subirQR } from '../../lib/fotos'
 import { olvidarCuentas, tipoCuenta, urlQR } from '../../components/Cuentas'
 import { Hoja, Interruptor } from '../../components/ui'
+import Icono from '../../components/Icono'
 
 const VACIA = { banco: '', tipo_cuenta: 'ahorro', numero: '', titular: '', nota: '', qr_path: null, activo: true }
 
@@ -34,7 +35,7 @@ export default function MetodosPago({ avisar }) {
   return (
     <section className="tarjeta space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-slate-900">🏦 Métodos de pago</h3>
+        <h3 className="flex items-center gap-2 font-bold text-slate-900"><Icono n="banco" size={20} className="text-marca-texto" />Cuentas</h3>
         <button onClick={() => setEditando({ ...VACIA, orden: cuentas?.length ?? 0 })} className="btn-primario py-1.5 text-sm">+ Cuenta</button>
       </div>
       <p className="text-xs text-slate-500">
@@ -51,7 +52,7 @@ export default function MetodosPago({ avisar }) {
                 <button type="button" onClick={() => mover(c, 1)} disabled={i === cuentas.length - 1} className="px-1 text-xs text-slate-500 disabled:opacity-20" aria-label="Bajar">▼</button>
               </div>
               <button type="button" onClick={() => setEditando(c)} className="min-w-0 flex-1 text-left">
-                <p className="truncate font-semibold text-slate-900">🏦 {c.banco}{c.qr_path ? ' · 🔳' : ''}</p>
+                <p className="truncate font-semibold text-slate-900"><Icono n="banco" size={16} className="mr-1 -mt-0.5 align-middle text-marca-texto" />{c.banco}{c.qr_path && <Icono n="qr" size={15} className="ml-1.5 -mt-0.5 align-middle text-slate-500" />}</p>
                 <p className="truncate text-xs text-slate-500">{tipoCuenta(c.tipo_cuenta)} · {c.numero} · {c.titular}{!c.activo && ' · oculta'}</p>
               </button>
             </li>
@@ -147,7 +148,7 @@ function EditarCuenta({ cuenta, avisar, onCerrar, onGuardado }) {
           <p className="etiqueta">Código QR (opcional)</p>
           <div className="flex items-center gap-3">
             <span className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-3xl">
-              {!quitarQR && vista ? <img src={vista} alt="QR" className="h-full w-full object-contain" /> : '🔳'}
+              {!quitarQR && vista ? <img src={vista} alt="QR" className="h-full w-full object-contain" /> : <Icono n="qr" size={32} className="text-slate-400" />}
             </span>
             <div className="flex flex-col gap-2">
               <label className="btn-secundario cursor-pointer py-1.5 text-center text-sm">

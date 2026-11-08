@@ -1,3 +1,4 @@
+import { svgDe } from '../components/Icono'
 // Ícono de la app hecho con el logo (o emoji) y el color de la tienda.
 // En iPhone se usa al "Agregar a pantalla de inicio"; en Android viene del manifiesto.
 
@@ -32,10 +33,22 @@ export async function dibujarIcono({ color_marca, emoji, logo_url }, lado = 180)
       return c.toDataURL('image/png')
     } catch { /* si no carga el logo, usa el emoji */ }
   }
+  // Ícono de la galería (Phosphor): se dibuja encima del color
+  const base = svgDe(emoji)
+  if (base) {
+    try {
+      const tinta = getComputedStyle(document.documentElement).getPropertyValue('--color-sobre-marca').trim() || '#ffffff'
+      const svg = base.replace('fill="currentColor"', `fill="${tinta}"`)
+      const img = await cargarImagen(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`)
+      const t = lado * 0.6
+      ctx.drawImage(img, (lado - t) / 2, (lado - t) / 2, t, t)
+      return c.toDataURL('image/png')
+    } catch { /* si falla, se usa texto */ }
+  }
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.font = `${Math.round(lado * 0.56)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`
-  ctx.fillText(emoji || '🍿', lado / 2, lado * 0.54)
+  ctx.fillText(emoji || '', lado / 2, lado * 0.54)
   return c.toDataURL('image/png')
 }
 

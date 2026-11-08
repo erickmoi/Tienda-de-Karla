@@ -6,22 +6,22 @@ import { aplicarColor, PALETAS, vibrar } from '../../lib/tema'
 import { borrarFoto, prepararFoto, subirFoto } from '../../lib/fotos'
 import { Cargando, Interruptor } from '../../components/ui'
 import MetodosPago from './MetodosPago'
+import Icono, { IconoCategoria, SelectorIcono } from '../../components/Icono'
 
 const DIAS = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados']
 const horaTxt = (h) => (h === 24 ? '12:00 a. m. (medianoche)' : `${h % 12 || 12}:00 ${h < 12 ? 'a. m.' : 'p. m.'}`)
 
 const PARTES = [
-  { id: 'apariencia', icono: '🎨', titulo: 'Apariencia', ayuda: 'Nombre, logo, color y cómo se ve el menú' },
-  { id: 'metodos', icono: '🏦', titulo: 'Métodos de pago', ayuda: 'Cuentas de banco y QR para transferir' },
-  { id: 'cuentas', icono: '💵', titulo: 'Pagos y límites', ayuda: 'Avisos de pago, crédito a favor y límite de deuda' },
-  { id: 'horario', icono: '🕐', titulo: 'Horario de la tienda', ayuda: 'Cuándo se puede comprar' },
-  { id: 'notificaciones', icono: '🔔', titulo: 'Notificaciones', ayuda: 'Recordatorios de saldo, quincena y agotados' },
-  { id: 'registro', icono: '👤', titulo: 'Registro de cuentas', ayuda: 'Quién puede crear cuenta' },
+  { id: 'apariencia', icono: 'apariencia', titulo: 'Apariencia', ayuda: 'Nombre, logo, color y cómo se ve el menú' },
+  { id: 'metodos', icono: 'banco', titulo: 'Métodos de pago', ayuda: 'Cuentas de banco y QR para transferir' },
+  { id: 'cuentas', icono: 'deudores', titulo: 'Pagos y límites', ayuda: 'Avisos de pago, crédito a favor y límite de deuda' },
+  { id: 'horario', icono: 'horario', titulo: 'Horario de la tienda', ayuda: 'Cuándo se puede comprar' },
+  { id: 'notificaciones', icono: 'notificaciones', titulo: 'Notificaciones', ayuda: 'Recordatorios de saldo, quincena y agotados' },
+  { id: 'registro', icono: 'registro', titulo: 'Registro de cuentas', ayuda: 'Quién puede crear cuenta' },
 ]
 
 const igual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
-const EMOJIS = ['🍿', '🛒', '🍬', '🍫', '🥤', '🍪', '🧁', '🍭', '☕', '🏪', '⭐', '🌙']
 
 export default function Ajustes({ avisar }) {
   const { recargar } = useApariencia()
@@ -78,7 +78,7 @@ export default function Ajustes({ avisar }) {
         pagos_auto: f.pagos_auto,
         mostrar_stock: f.mostrar_stock,
         frase: f.frase.trim(),
-        emoji: f.emoji || '🍿',
+        emoji: f.emoji || 'popcorn',
         logo_url,
         color_marca: f.color_marca,
         columnas_menu: Number(f.columnas_menu),
@@ -135,21 +135,17 @@ export default function Ajustes({ avisar }) {
   if (!actual) {
     return (
       <div className="space-y-3">
-        <ul className="tarjeta divide-y divide-slate-100 p-0">
+        <div className="grid grid-cols-3 gap-2">
           {PARTES.map((x) => (
-            <li key={x.id}>
-              <button type="button" onClick={() => { vibrar(6); setParte(x.id) }}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-slate-50">
-                <span className="text-2xl">{x.icono}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-slate-900">{x.titulo}</span>
-                  <span className="block truncate text-xs text-slate-500">{x.ayuda}</span>
-                </span>
-                <span className="text-xl text-slate-300">›</span>
-              </button>
-            </li>
+            <button key={x.id} type="button" onClick={() => { vibrar(6); setParte(x.id) }}
+              className="flex flex-col items-center gap-1.5 rounded-2xl bg-superficie px-1.5 py-4 text-center shadow-sm ring-1 ring-slate-200 transition active:scale-95">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-marca-claro text-marca-texto">
+                <Icono n={x.icono} size={28} />
+              </span>
+              <span className="text-xs font-semibold leading-tight text-slate-800">{x.titulo}</span>
+            </button>
           ))}
-        </ul>
+        </div>
         {pendientes && (
           <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-10">
             <p className="mb-1.5 rounded-lg bg-amber-100 px-3 py-1.5 text-center text-xs font-semibold text-amber-900 shadow">
@@ -168,7 +164,7 @@ export default function Ajustes({ avisar }) {
     <div className="space-y-4">
     <div className="flex items-center gap-2">
       <button type="button" onClick={() => setParte(null)} className="rounded-full px-2 py-1 text-sm font-semibold text-marca-texto">‹ Ajustes</button>
-      <h3 className="text-lg font-bold text-slate-900">{actual.icono} {actual.titulo}</h3>
+      <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900"><Icono n={actual.icono} size={24} className="text-marca-texto" />{actual.titulo}</h3>
     </div>
     {parte === 'metodos' && <MetodosPago avisar={avisar} />}
     {parte !== 'metodos' && (
@@ -206,7 +202,7 @@ export default function Ajustes({ avisar }) {
                     activo ? 'scale-110 ring-4 ring-slate-300' : 'active:scale-90'
                   }`}
                   style={{ background: p.color }}>
-                  {activo && '✓'}
+                  {activo && <Icono n="check" size={20} weight="bold" />}
                 </button>
               )
             })}
@@ -221,8 +217,8 @@ export default function Ajustes({ avisar }) {
         <div>
           <p className="etiqueta">Ícono de la tienda</p>
           <div className="flex items-center gap-3">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-marca-claro text-4xl">
-              {vistaLogo ? <img src={vistaLogo} alt="" className="h-full w-full object-cover" /> : f.emoji}
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-marca text-4xl text-sobre-marca">
+              {vistaLogo ? <img src={vistaLogo} alt="" className="h-full w-full object-cover" /> : <IconoCategoria valor={f.emoji} size={38} />}
             </span>
             <div className="flex flex-col gap-2">
               <label className="btn-secundario cursor-pointer py-1.5 text-center text-sm">
@@ -237,13 +233,8 @@ export default function Ajustes({ avisar }) {
             </div>
           </div>
           {!vistaLogo && (
-            <div className="mt-3 grid grid-cols-6 gap-2">
-              {EMOJIS.map((em) => (
-                <button key={em} type="button" onClick={() => set('emoji', em)}
-                  className={`aspect-square rounded-xl text-2xl transition ${f.emoji === em ? 'scale-110 bg-marca-claro ring-2 ring-marca' : 'bg-slate-100 active:scale-90'}`}>
-                  {em}
-                </button>
-              ))}
+            <div className="mt-3">
+              <SelectorIcono valor={f.emoji} onCambio={(k) => set('emoji', k)} />
             </div>
           )}
         </div>
@@ -254,7 +245,7 @@ export default function Ajustes({ avisar }) {
         <div>
           <p className="etiqueta">Vista del menú</p>
           <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
-            {[[1, '☰ Lista'], [2, '▦ 2 columnas'], [3, '▩ 3 columnas']].map(([n, t]) => (
+            {[[1, 'Lista'], [2, '2 columnas'], [3, '3 columnas']].map(([n, t]) => (
               <button key={n} type="button" onClick={() => set('columnas_menu', n)}
                 className={`rounded-xl py-2.5 transition ${Number(f.columnas_menu) === n ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-600'}`}>
                 {t}
@@ -310,7 +301,7 @@ export default function Ajustes({ avisar }) {
       {parte === 'registro' && (
       <section className="tarjeta space-y-3">
         <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
-          {[['abierto', '🟢 Abierto'], ['aprobacion', '🟡 Con aprobación'], ['cerrado', '🔴 Cerrado']].map(([k, t]) => (
+          {[['abierto', 'Abierto'], ['aprobacion', 'Con aprobación'], ['cerrado', 'Cerrado']].map(([k, t]) => (
             <button key={k} type="button" onClick={() => set('registro', k)}
               className={`rounded-xl px-1 py-2.5 transition ${f.registro === k ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-600'}`}>
               {t}
@@ -339,7 +330,7 @@ export default function Ajustes({ avisar }) {
         {f.horario_modo === 'manual' && (
           <div className="animar-entrada">
             <Interruptor activo={f.tienda_abierta} onCambio={(v) => set('tienda_abierta', v)}
-              etiqueta={f.tienda_abierta ? '🟢 Tienda abierta' : '🔴 Tienda cerrada'} />
+              etiqueta={f.tienda_abierta ? 'Tienda abierta' : 'Tienda cerrada'} />
           </div>
         )}
         {f.horario_modo === 'horario' && (

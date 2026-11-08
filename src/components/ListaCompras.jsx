@@ -1,12 +1,13 @@
 import { dinero, fecha } from '../lib/format'
 import { Vacio } from './ui'
 import { SelectorCuenta } from './Cuentas'
+import Icono from './Icono'
 
 // Estado de pago de una compra según su reporte (si lo tiene)
 const ESTADO_COMPRA = {
-  aprobado: { texto: '✅ Pagada', clase: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  pendiente: { texto: '⏳ Pago en revisión', clase: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  rechazado: { texto: '📒 A cuenta (pago no aprobado)', clase: 'bg-red-50 text-red-700 ring-red-200' },
+  aprobado: { icono: 'ok', texto: 'Pagada', clase: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  pendiente: { icono: 'espera', texto: 'Pago en revisión', clase: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  rechazado: { icono: 'nota', texto: 'A cuenta (pago no aprobado)', clase: 'bg-red-50 text-red-700 ring-red-200' },
 }
 
 function estadoDe(c) {
@@ -36,13 +37,13 @@ export default function ListaCompras({ compras, accion }) {
                 <p className={`font-bold text-slate-900 ${c.anulada ? 'line-through' : ''}`}>{dinero(c.total)}</p>
                 {c.anulada && <p className="text-xs font-semibold text-slate-500">Anulada</p>}
                 {!c.anulada && Number(c.descuento) > 0 && (
-                  <p className="text-xs font-semibold text-orange-600">🔥 −{dinero(c.descuento)}</p>
+                  <p className="text-xs font-semibold text-orange-600"><Icono n="promo" size={13} className="mr-0.5 -mt-0.5 align-middle" />−{dinero(c.descuento)}</p>
                 )}
               </div>
             </div>
             {estado && (
               <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${estado.clase}`}>
-                {estado.texto}
+                <Icono n={estado.icono} size={13} className="mr-1 -mt-0.5 align-middle" />{estado.texto}
               </span>
             )}
             {!c.anulada && accion?.(c)}
@@ -81,10 +82,10 @@ export function FormaDePago({ metodo, setMetodo, referencia, setReferencia, cuen
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
-        {[['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transferencia']].map(([k, t]) => (
+        {[['efectivo', 'Efectivo', 'efectivo'], ['transferencia', 'Transferencia', 'banco']].map(([k, t, ic]) => (
           <button key={k} type="button" onClick={() => setMetodo(k)}
             className={`rounded-xl py-2 transition ${metodo === k ? 'bg-marca text-sobre-marca shadow' : 'bg-slate-100 text-slate-600'}`}>
-            {t}
+            <Icono n={ic} size={17} className="mr-1.5 -mt-0.5 align-middle" />{t}
           </button>
         ))}
       </div>
